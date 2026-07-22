@@ -20,7 +20,7 @@ from PIL import Image
 
 from . import encode as _encode
 from . import scene as _scene
-from .canvas import H, W
+from .canvas import check_frame_sizes
 from .errors import LlmbytError
 
 
@@ -75,7 +75,12 @@ def load_display(path):
 
 
 def normalize(value, frame_ms=_encode.FRAME_MS_DEFAULT):
-    """Turn a render() result into a list of 64x32 frames."""
+    """Turn a render() result into (list of 64x32 frames, encode.Budget).
+
+    The Budget is what lets the CLI say how many frames were dropped and
+    why. It is built by encode.take() from the count render() actually
+    produced, never from the already-shortened list.
+    """
     if isinstance(value, _scene.Node):
         return _scene.render_scene(value, frame_ms=frame_ms)
 
@@ -117,14 +122,10 @@ def normalize(value, frame_ms=_encode.FRAME_MS_DEFAULT):
                 f"render() returned {type(f).__name__} at position {i}. "
                 f"Every item must be a PIL Image."
             )
-        if (f.width, f.height) != (W, H):
-            raise DisplayError(
-                f"Frame {i} is {f.width}x{f.height}, but the display is "
-                f"{W}x{H}. Build frames on a llmbyt.canvas.Canvas, or resize "
-                f"to exactly {W}x{H}."
-            )
-    return frames[:_encode.max_frames(frame_ms)]
+    check_frame_sizes(frames, DisplayError)
+    return _encode.take(lambda n: frames[:n], len(frames), frame_ms)
 
 
 def frames_from(path, frame_ms=_encode.FRAME_MS_DEFAULT):
+    """Load path's render() and normalize it. Returns (frames, Budget)."""
     return normalize(load_display(path)(), frame_ms=frame_ms)

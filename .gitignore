@@ -3,5 +3,13 @@ __pycache__/
 *.pyc
 .venv/
 dist/
+build/
+*.egg-info/
+.pytest_cache/
 out.png
 out.gif
+
+# assert_golden writes these beside a fixture when it fails: debugging
+# output, never fixtures.
+tests/golden/*.actual.png
+tests/golden/*.diff.png

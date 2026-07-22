@@ -34,6 +34,17 @@ text are obvious at a glance.
 Use `spleen-5x8` for anything read at a glance -- a time, a temperature, a
 single number. Use `tom-thumb` when you need the density.
 
+**The fonts are ASCII-only, and non-ASCII drops silently.** Both shipped
+faces define codepoints 32-126 and nothing else. Any character outside
+that range -- accented letters, curly quotes, em dashes, box drawing,
+emoji -- renders as an empty cell of the same width, with no warning and
+exit 0:
+
+    llmbyt text "héllo — wörld ☃"     # shows: h llo  w rld
+
+Spell it in ASCII (`hello - world`), or draw the glyph yourself with
+`canvas.pixel`.
+
 **One pixel of detail is noise.** A 1px gap between elements disappears at
 distance; a 1px line reads as a smudge. Give elements 2px of separation
 before you trust them to look separate.
@@ -69,7 +80,8 @@ fewer lit pixels, not dimmer ones.
 
 **The ceiling is 14500ms and the device does not warn you.** Past roughly
 15 seconds the Tidbyt simply stops rendering, with nothing to see. llmbyt
-clamps and tells you exactly how many frames it dropped; if you see that
+clamps and tells you exactly how many frames it dropped -- on `preview`
+as well as `show`, so you find out before you push. If you see that
 message, shorten the animation or lower `frame_ms`.
 
 frames x frame_ms must stay under 14500. At the 100ms default that is 145

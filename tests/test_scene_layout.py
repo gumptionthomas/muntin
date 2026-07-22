@@ -142,3 +142,47 @@ def test_negative_gap_names_the_constraint_and_the_fix():
         sc.Row([sc.Text("a"), sc.Text("b")], gap=-100)
     msg = str(e.value)
     assert "gap" in msg and "-100" in msg
+
+
+# --- non-node children ------------------------------------------------
+
+def test_a_string_child_names_the_index_the_type_and_scene_text():
+    """sc.Column(["hello", "world"]) is the most likely mistake against
+    this API -- the constructor takes a list and strings read naturally.
+    It used to surface much later as AttributeError: 'str' object has no
+    attribute 'measure', which teaches nothing."""
+    with pytest.raises(sc.SceneError) as e:
+        sc.Column(["hello", "world"])
+    msg = str(e.value)
+    assert "index 0" in msg
+    assert "str" in msg
+    assert "scene node" in msg
+    assert "Text" in msg
+
+
+def test_a_non_string_non_node_child_names_the_offending_index():
+    with pytest.raises(sc.SceneError) as e:
+        sc.Row([sc.Text("ok"), 42])
+    msg = str(e.value)
+    assert "index 1" in msg and "int" in msg and "scene node" in msg
+
+
+def test_the_container_that_rejected_the_child_names_itself():
+    with pytest.raises(sc.SceneError, match="Column"):
+        sc.Column(["x"])
+    with pytest.raises(sc.SceneError, match="Row"):
+        sc.Row(["x"])
+    with pytest.raises(sc.SceneError, match="Stack"):
+        sc.Stack(["x"])
+
+
+def test_a_marquee_over_a_non_node_is_rejected_at_construction():
+    with pytest.raises(sc.SceneError) as e:
+        sc.Marquee("scroll me")
+    msg = str(e.value)
+    assert "Marquee" in msg and "str" in msg and "Text" in msg
+
+
+def test_a_generator_of_real_nodes_is_still_accepted():
+    col = sc.Column(sc.Text(c) for c in "abc")
+    assert len(col.children) == 3

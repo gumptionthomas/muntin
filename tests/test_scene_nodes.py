@@ -18,6 +18,36 @@ def test_marquee_measure_clamps_to_the_display_so_it_never_overflows():
     assert sc.Marquee(tall).measure() == (16, cv.H)
 
 
+def test_marquee_measure_clamps_only_the_axis_it_scrolls():
+    """A Marquee is a viewport on ONE axis. Clamping the other one too
+    exempted the whole subtree from render_scene's overflow check on an
+    axis nothing would ever scroll into view -- so a y-marquee over
+    160px-wide text reported (64, 32), rendered clean, and had every
+    line cut off at x=64 with no error."""
+    wide = sc.Text("x" * 40)                      # 160x6
+    assert sc.Marquee(wide, axis="y").measure() == (160, 6)
+    assert sc.Marquee(wide, axis="x").measure() == (cv.W, 6)
+
+    tall = sc.Column([sc.Text("x") for _ in range(10)])   # 4x60
+    assert sc.Marquee(tall, axis="y").measure() == (4, cv.H)
+    assert sc.Marquee(tall, axis="x").measure() == (4, 60)
+
+
+def test_a_y_marquee_over_too_wide_content_is_a_loud_overflow():
+    # The whole point of measuring the non-scrolling axis honestly.
+    with pytest.raises(sc.SceneOverflowError) as e:
+        sc.render_scene(sc.Marquee(sc.Text("x" * 40), axis="y"))
+    msg = str(e.value)
+    assert "160" in msg and "64" in msg
+
+
+def test_an_x_marquee_over_too_tall_content_is_a_loud_overflow():
+    tall = sc.Column([sc.Text("x") for _ in range(10)])   # 60px tall
+    with pytest.raises(sc.SceneOverflowError) as e:
+        sc.render_scene(sc.Marquee(tall, axis="x"))
+    assert "60" in str(e.value)
+
+
 def test_marquee_frame_count_is_hold_plus_travel():
     child = sc.Column([sc.Text("x") for _ in range(10)])   # 60px tall
     m = sc.Marquee(child, axis="y", hold=5, speed=1)

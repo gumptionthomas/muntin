@@ -31,6 +31,26 @@ PALETTE = {
 }
 
 
+def check_frame_sizes(frames, error):
+    """The one copy of the every-frame-is-exactly-WxH invariant.
+
+    encode, preview, and runner each enforce it, and each used to carry
+    its own hand-written copy of the message. The three drifted: encode's
+    lost the fix sentence entirely, leaving constraint and violation with
+    no instruction, and runner's capitalized "Frame" where the others did
+    not. They now share this one, parameterized by the error class the
+    calling module raises so each still fails with its own type.
+    """
+    for i, f in enumerate(frames):
+        if (f.width, f.height) != (W, H):
+            raise error(
+                f"frame {i} is {f.width}x{f.height}, but the display is "
+                f"{W}x{H}. Every frame must be exactly {W}x{H} -- build "
+                f"frames on a llmbyt.canvas.Canvas, or resize or crop each "
+                f"frame to {W}x{H} before passing it on."
+            )
+
+
 class Canvas:
     def __init__(self, w=W, h=H, bg=BLACK):
         self.img = Image.new("RGB", (w, h), bg)

@@ -19,7 +19,7 @@ from llmbyt import scene as sc
 def render():
     return sc.Text("hi")
 """)
-    frames = runner.frames_from(p)
+    frames, _ = runner.frames_from(p)
     assert len(frames) == 1
     assert frames[0].size == (cv.W, cv.H)
 
@@ -30,7 +30,7 @@ from llmbyt import scene as sc
 def render():
     return sc.Marquee(sc.Column([sc.Text("x") for _ in range(8)]), hold=2)
 """)
-    assert len(runner.frames_from(p)) > 1
+    assert len(runner.frames_from(p)[0]) > 1
 
 
 def test_a_single_image_becomes_one_frame(tmp_path):
@@ -39,7 +39,7 @@ from PIL import Image
 def render():
     return Image.new("RGB", (64, 32), (255, 0, 0))
 """)
-    assert len(runner.frames_from(p)) == 1
+    assert len(runner.frames_from(p)[0]) == 1
 
 
 def test_a_list_of_images_becomes_an_animation(tmp_path):
@@ -48,7 +48,7 @@ from PIL import Image
 def render():
     return [Image.new("RGB", (64, 32)) for _ in range(4)]
 """)
-    assert len(runner.frames_from(p)) == 4
+    assert len(runner.frames_from(p)[0]) == 4
 
 
 def test_a_generator_of_images_is_accepted(tmp_path):
@@ -58,7 +58,7 @@ def render():
     for i in range(3):
         yield Image.new("RGB", (64, 32), (i * 10, 0, 0))
 """)
-    assert len(runner.frames_from(p)) == 3
+    assert len(runner.frames_from(p)[0]) == 3
 
 
 def test_raw_frames_are_clamped_to_the_device_budget(tmp_path):
@@ -67,7 +67,15 @@ from PIL import Image
 def render():
     return [Image.new("RGB", (64, 32)) for _ in range(500)]
 """)
-    assert len(runner.frames_from(p, frame_ms=100)) == 145
+    frames, budget = runner.frames_from(p, frame_ms=100)
+    assert len(frames) == 145
+    # The Budget must carry what render() actually asked for, not the
+    # post-clamp length -- otherwise dropped == 0, fits is True, and
+    # nothing downstream can report the truncation.
+    assert budget.requested == 500
+    assert budget.kept == 145
+    assert budget.dropped == 355
+    assert budget.fits is False
 
 
 def test_a_wrong_sized_raw_frame_names_the_size(tmp_path):
@@ -244,6 +252,6 @@ def test_two_displays_with_the_same_basename_do_not_collide(tmp_path):
     (tmp_path / "b" / "d.py").write_text(
         'from PIL import Image\n'
         'def render():\n    return Image.new("RGB", (64, 32), (0, 255, 0))\n')
-    fa = runner.frames_from(tmp_path / "a" / "d.py")
-    fb = runner.frames_from(tmp_path / "b" / "d.py")
+    fa, _ = runner.frames_from(tmp_path / "a" / "d.py")
+    fb, _ = runner.frames_from(tmp_path / "b" / "d.py")
     assert fa[0].getpixel((0, 0)) != fb[0].getpixel((0, 0))

@@ -51,6 +51,34 @@ class Node:
         return 1
 
 
+def _check_node(value, what):
+    """Reject a non-node child at construction, where the mistake is.
+
+    Without this the failure surfaces much later as
+    AttributeError: 'str' object has no attribute 'measure' -- from
+    inside measure(), with nothing pointing back at the call that built
+    the container. sc.Column(["hello", "world"]) is the single most
+    likely mistake against this API, because the constructor takes a
+    list and passing strings reads perfectly naturally.
+    """
+    if isinstance(value, Node):
+        return value
+    name = type(value).__name__
+    fix = ("Wrap the string in a Text node -- sc.Text('hello'), not "
+           "'hello'." if isinstance(value, str) else
+           "Children must be scene nodes: Text, Row, Column, Stack, "
+           "Marquee, Sprite, Plot.")
+    raise SceneError(f"{what} is {'an' if name[0].lower() in 'aeiou' else 'a'} "
+                     f"{name}, not a scene node. {fix}")
+
+
+def _check_children(kind, children):
+    out = list(children)
+    for i, child in enumerate(out):
+        _check_node(child, f"{kind} child at index {i}")
+    return out
+
+
 class Text(Node):
     def __init__(self, s, font=None, color=WHITE):
         self.s = str(s)
@@ -73,7 +101,7 @@ class _Container(Node):
                 f"gap would drive the main-axis measure() negative. Pass "
                 f"gap=0 or a positive integer."
             )
-        self.children = list(children)
+        self.children = _check_children(type(self).__name__, children)
         self.gap = gap
         self.align = _check_alignment("align", align)
         self.justify = _check_alignment("justify", justify)
@@ -132,7 +160,7 @@ class Stack(Node):
     """Children overlaid at the same origin. Last child paints on top."""
 
     def __init__(self, children):
-        self.children = list(children)
+        self.children = _check_children("Stack", children)
 
     def measure(self):
         sizes = [c.measure() for c in self.children]
@@ -161,8 +189,13 @@ class SceneOverflowError(SceneError):
 class Marquee(Node):
     """A viewport that scrolls an oversized child past the display.
 
-    measure() reports the clamped viewport size, not the child's size --
-    that is what makes a Marquee root exempt from the overflow check.
+    measure() clamps the SCROLL AXIS only -- that is what makes a Marquee
+    root exempt from the overflow check on the axis it can actually
+    scroll. The other axis is reported honestly, because nothing will
+    ever bring that overflow into view: clamping both meant a
+    Marquee(axis="y") over 160px-wide text reported (64, 32), passed
+    render_scene's overflow check, and had every line cut off at x=64
+    with no error at all.
     """
 
     def __init__(self, child, axis="y", hold=14, speed=1):
@@ -186,7 +219,7 @@ class Marquee(Node):
                 f"and a negative count is meaningless. Pass hold=0 or a "
                 f"positive integer."
             )
-        self.child = child
+        self.child = _check_node(child, "Marquee child")
         self.axis = axis
         self.hold = hold
         self.speed = speed
@@ -197,7 +230,9 @@ class Marquee(Node):
 
     def measure(self):
         cw, ch = self.child.measure()
-        return (min(cw, W), min(ch, H))
+        if self.axis == "x":
+            return (min(cw, W), ch)
+        return (cw, min(ch, H))
 
     def frame_count(self):
         travel = self._travel()
@@ -314,17 +349,30 @@ class Plot(Node):
 
 
 def render_scene(node, frame_ms=_encode.FRAME_MS_DEFAULT):
-    """Render a scene tree to a list of 64x32 frames."""
+    """Render a scene tree. Returns (frames, encode.Budget).
+
+    frame_count() is cheap, so the true requested count is known before a
+    single pixel is drawn. It goes to encode.take(), which decides how
+    many frames to actually render and reports the rest as dropped --
+    the scene never renders frames it would only lose, and the caller
+    still learns the real number.
+    """
     w, h = node.measure()
     if w > W or h > H:
         raise SceneOverflowError(
             f"Scene measures {w}x{h}, larger than the {W}x{H} display. "
-            f"Shorten the content, or wrap it in Marquee(...) to scroll it."
+            f"Shorten the content, or wrap it in Marquee(...) to scroll it. "
+            f"A Marquee only exempts the axis it scrolls: an axis='y' one "
+            f"must still fit within {W}px of width, and an axis='x' one "
+            f"within {H}px of height."
         )
-    n = min(max(1, node.frame_count()), _encode.max_frames(frame_ms))
-    frames = []
-    for t in range(n):
-        c = Canvas()
-        node.draw(c, (0, 0, W, H), t)
-        frames.append(c.snapshot())
-    return frames
+
+    def produce(n):
+        out = []
+        for t in range(n):
+            c = Canvas()
+            node.draw(c, (0, 0, W, H), t)
+            out.append(c.snapshot())
+        return out
+
+    return _encode.take(produce, max(1, node.frame_count()), frame_ms)

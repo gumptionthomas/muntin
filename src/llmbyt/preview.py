@@ -9,7 +9,7 @@ import pathlib
 
 from PIL import Image, ImageDraw
 
-from .canvas import H, W
+from .canvas import check_frame_sizes
 from .errors import LlmbytError
 
 DEFAULT_SCALE = 8
@@ -32,6 +32,48 @@ def _check_frame_ms(frame_ms: int) -> None:
         )
 
 
+def candidates(path):
+    """Every file a preview run could leave at this output stem.
+
+    write() picks .png or .gif from the frame count, so one stem owns two
+    possible artifacts.
+    """
+    path = pathlib.Path(path)
+    try:
+        return [path, path.with_suffix(".png"), path.with_suffix(".gif")]
+    except ValueError:                      # no name to hang a suffix on
+        return [path]
+
+
+def clear(path):
+    """Delete any artifact a previous run left at this output stem.
+
+    Call this BEFORE rendering, not after. A render that raises used to
+    leave the last successful preview sitting on disk, and an agent
+    iterating against a stale PNG cannot tell that it is stale -- it
+    reads the error, looks at the image, and sees the bug it just fixed.
+    Both extensions go, so an animated run does not leave its .gif
+    beside the .png a later static run writes.
+    """
+    failed = None
+    for c in candidates(path):
+        try:
+            c.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            failed = (c, e.strerror or type(e).__name__)
+            break
+    if failed is not None:
+        target, reason = failed
+        raise PreviewError(
+            f"Cannot remove the previous preview at {target} ({reason}). "
+            f"llmbyt clears the old artifact before rendering so a failed "
+            f"render can never leave a stale image behind. Delete it by "
+            f"hand, or pass a different -o path."
+        )
+
+
 def write(frames, path, scale=DEFAULT_SCALE, grid=True, frame_ms=100):
     """Write frames to path. Returns the pathlib.Path actually written."""
     _check_frame_ms(frame_ms)
@@ -41,13 +83,7 @@ def write(frames, path, scale=DEFAULT_SCALE, grid=True, frame_ms=100):
             "Cannot preview: no frames. render() must return a Scene, an "
             "Image, or a non-empty iterable of Images."
         )
-    for i, f in enumerate(frames):
-        if (f.width, f.height) != (W, H):
-            raise PreviewError(
-                f"frame {i} is {f.width}x{f.height}, but the display is "
-                f"{W}x{H}. Every frame must be exactly {W}x{H}. Resize or "
-                f"crop the frame to {W}x{H} before passing it to preview.write()."
-            )
+    check_frame_sizes(frames, PreviewError)
     if not isinstance(scale, int):
         raise PreviewError(
             f"scale must be an integer, got {scale!r} "

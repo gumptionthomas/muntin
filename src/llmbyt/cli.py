@@ -83,21 +83,30 @@ def main(argv=None) -> int:
 def _dispatch(args) -> int:
     if args.cmd == "init":
         return _init()
+
+    # Before anything is rendered, not after it succeeds: if the render
+    # raises, the previous run's preview must not still be sitting there
+    # looking current.
+    preview.clear(args.out)
+
     if args.cmd == "preview":
-        return _render(runner.frames_from(args.display, args.frame_ms),
-                       args, push=False)
+        return _render(*runner.frames_from(args.display, args.frame_ms),
+                       args=args, push=False)
     if args.cmd == "show":
-        return _render(runner.frames_from(args.display, args.frame_ms),
-                       args, push=True)
+        return _render(*runner.frames_from(args.display, args.frame_ms),
+                       args=args, push=True)
     if args.cmd == "text":
-        return _render(sc.render_scene(_message(args.message),
-                                       frame_ms=args.frame_ms),
-                       args, push=True)
+        return _render(*sc.render_scene(_message(args.message),
+                                        frame_ms=args.frame_ms),
+                       args=args, push=True)
     if args.cmd == "image":
         node = sc.Sprite(args.path, fit="contain")
-        return _render(sc.render_scene(sc.Stack([node]),
-                                       frame_ms=args.frame_ms),
-                       args, push=True)
+        # Column, not Stack: Stack hands its child the full box, so a
+        # fitted image landed flush against the top edge instead of
+        # centred. A Column of one centres on both axes.
+        return _render(*sc.render_scene(
+            sc.Column([node], justify="center", align="center"),
+            frame_ms=args.frame_ms), args=args, push=True)
     raise AssertionError(f"unreachable command {args.cmd!r}")
 
 
@@ -132,17 +141,22 @@ def _message(text):
     return sc.Column([column], justify="center", align="center")
 
 
-def _render(frames, args, push) -> int:
+def _render(frames, budget, args, push) -> int:
     path = preview.write(frames, args.out, scale=args.scale,
                          grid=not args.no_grid, frame_ms=args.frame_ms)
     print(f"preview: {path}  ({len(frames)} frame"
           f"{'s' if len(frames) != 1 else ''})")
+    # On preview as well as show. An agent iterating with preview alone
+    # has to learn its animation is over budget before it ever pushes,
+    # and the frame count printed above cannot tell it -- that count is
+    # what survived, not what was asked for.
+    message = budget.message()
+    if message:
+        print(message, file=sys.stderr)
     if not push:
         return 0
 
-    webp, budget = encode.to_webp(frames, frame_ms=args.frame_ms)
-    if budget.message():
-        print(budget.message(), file=sys.stderr)
+    webp, _ = encode.to_webp(frames, frame_ms=args.frame_ms)
     device.push(webp, device.load_config())
     print(f"pushed {len(webp)} bytes to the device")
     return 0

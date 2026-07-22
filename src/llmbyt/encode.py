@@ -8,7 +8,7 @@ class that costs an hour of confused iteration.
 import io
 from dataclasses import dataclass
 
-from .canvas import H, W
+from .canvas import check_frame_sizes
 from .errors import LlmbytError
 
 MAX_MS = 14500
@@ -76,8 +76,40 @@ def budget(n_frames: int, frame_ms: int = FRAME_MS_DEFAULT) -> Budget:
     return Budget(n_frames, min(n_frames, max_frames(frame_ms)), frame_ms)
 
 
+def take(produce, requested: int, frame_ms: int = FRAME_MS_DEFAULT
+         ) -> tuple[list, Budget]:
+    """THE ONLY PLACE IN llmbyt THAT CLAMPS A FRAME COUNT.
+
+    Three layers used to clamp independently -- scene.render_scene,
+    runner.normalize, and to_webp below -- and only the last one built a
+    Budget. By the time it ran the list had already been shortened twice,
+    so requested == kept, fits was always True, message() always None,
+    and the CLI's warning branch was unreachable. Over-budget animations
+    were silently truncated on every path.
+
+    Now every clamp routes through here, and here alone:
+
+        requested   what the display actually asked for. This, not the
+                    post-clamp length, is what lands in the Budget.
+        produce(n)  called once with the number of frames to actually
+                    materialize, so a scene that wants 10,000 frames
+                    renders the budget rather than the 10,000 and then
+                    throwing 9,855 of them away.
+
+    The Budget travels back up to the CLI, which reports it on `preview`
+    as well as `show`.
+    """
+    b = budget(requested, frame_ms)
+    return list(produce(b.kept)), b
+
+
 def to_webp(frames, frame_ms: int = FRAME_MS_DEFAULT) -> tuple[bytes, Budget]:
-    """Encode frames. Returns (webp_bytes, Budget)."""
+    """Encode frames. Returns (webp_bytes, Budget).
+
+    The pipeline hands this already-budgeted frames, but to_webp is also
+    a public entry point, so it still enforces the ceiling -- through
+    take(), not with a clamp of its own.
+    """
     _check_frame_ms(frame_ms)
     frames = list(frames)
     if not frames:
@@ -85,15 +117,10 @@ def to_webp(frames, frame_ms: int = FRAME_MS_DEFAULT) -> tuple[bytes, Budget]:
             "Cannot encode: no frames. render() must return a Scene, an "
             "Image, or a non-empty iterable of Images."
         )
-    for i, f in enumerate(frames):
-        if (f.width, f.height) != (W, H):
-            raise EncodeError(
-                f"frame {i} is {f.width}x{f.height}, but the display is "
-                f"{W}x{H}. Every frame must be exactly {W}x{H}."
-            )
+    check_frame_sizes(frames, EncodeError)
 
-    b = budget(len(frames), frame_ms)
-    kept = [f.convert("RGB") for f in frames[:b.kept]]
+    kept, b = take(lambda n: frames[:n], len(frames), frame_ms)
+    kept = [f.convert("RGB") for f in kept]
     buf = io.BytesIO()
     kept[0].save(buf, format="WEBP", save_all=True, append_images=kept[1:],
                  duration=frame_ms, loop=0, lossless=True)

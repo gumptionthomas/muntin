@@ -56,8 +56,27 @@ def load_config(env=None, path=None) -> Config:
 
     values = {}
     if path.exists():
-        with open(path, "rb") as f:
-            values = tomllib.load(f)
+        # A corrupt or unreadable config used to escape as a raw
+        # tomllib.TOMLDecodeError traceback. On Python >= 3.13 that
+        # exception carries the whole config document on its .doc
+        # attribute -- api_token included. Same construct-outside-the-
+        # except discipline as push(): the ConfigError is raised once no
+        # exception is being handled, so the original (and its .doc) is
+        # not reachable through __context__ either.
+        read_error = None
+        try:
+            with open(path, "rb") as f:
+                values = tomllib.load(f)
+        except (OSError, tomllib.TOMLDecodeError) as e:
+            read_error = getattr(e, "strerror", None) or type(e).__name__
+        if read_error is not None:
+            raise ConfigError(
+                f"Cannot read the llmbyt config at {path} ({read_error}). "
+                f"It must be readable TOML with device_id and api_token. "
+                f"Re-run `llmbyt init` to write a fresh one, or fix the "
+                f"file by hand -- or set LLMBYT_DEVICE_ID and "
+                f"LLMBYT_API_TOKEN in the environment instead."
+            )
 
     device_id = env.get("LLMBYT_DEVICE_ID") or values.get("device_id")
     api_token = env.get("LLMBYT_API_TOKEN") or values.get("api_token")

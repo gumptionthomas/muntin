@@ -235,3 +235,71 @@ def test_transport_error_leaves_no_unredacted_context():
     err = e.value
     assert err.__cause__ is None
     assert err.__context__ is None
+
+
+# --- a corrupt config must not leak the token it contains --------------
+
+MALFORMED = ('device_id = "dev123"\n'
+             'api_token = "secret-token-value\n')      # unterminated string
+
+
+def test_a_malformed_config_is_a_clean_error_naming_the_path_and_the_fix(
+        tmp_path):
+    p = tmp_path / "config.toml"
+    p.write_text(MALFORMED)
+    with pytest.raises(device.ConfigError) as e:
+        device.load_config(env={}, path=p)
+    msg = str(e.value)
+    assert str(p) in msg
+    assert "llmbyt init" in msg
+
+
+def test_a_malformed_config_leaves_no_token_bearing_exception_reachable(
+        tmp_path):
+    """tomllib.TOMLDecodeError carries the entire document it failed on
+    in its .doc attribute -- api_token and all. str(e) never prints it,
+    but the reachability bar set by the push() finding is that no
+    attribute walk can get to it either, so the ConfigError is built and
+    raised outside the except block and nothing links back."""
+    p = tmp_path / "config.toml"
+    p.write_text(MALFORMED)
+    with pytest.raises(device.ConfigError) as e:
+        device.load_config(env={}, path=p)
+    err = e.value
+    assert err.__cause__ is None
+    assert err.__context__ is None
+    assert "secret-token-value" not in str(err)
+    assert not any("secret-token-value" in str(v)
+                   for v in vars(err).values())
+
+
+def test_a_malformed_config_does_not_escape_the_cli_as_a_traceback(
+        tmp_path, monkeypatch, capsys):
+    from llmbyt import cli
+    p = tmp_path / "config.toml"
+    p.write_text(MALFORMED)
+    monkeypatch.setattr(device, "CONFIG_PATH", p)
+    monkeypatch.delenv("LLMBYT_DEVICE_ID", raising=False)
+    monkeypatch.delenv("LLMBYT_API_TOKEN", raising=False)
+    assert cli.main(["text", "hi", "-o", str(tmp_path / "o")]) == 1
+    err = capsys.readouterr().err
+    assert "Traceback" not in err
+    assert "secret-token-value" not in err
+    assert "llmbyt init" in err
+
+
+def test_an_unreadable_config_is_a_clean_error_too(tmp_path):
+    import os
+    if os.geteuid() == 0:
+        pytest.skip("root ignores the permission bits this test relies on")
+    p = tmp_path / "config.toml"
+    p.write_text('device_id = "d"\napi_token = "t"\n')
+    p.chmod(0o000)
+    try:
+        with pytest.raises(device.ConfigError) as e:
+            device.load_config(env={}, path=p)
+    finally:
+        p.chmod(0o600)
+    msg = str(e.value)
+    assert str(p) in msg and "llmbyt init" in msg
+    assert e.value.__context__ is None

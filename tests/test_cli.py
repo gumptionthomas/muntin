@@ -158,16 +158,48 @@ def test_a_display_error_prints_the_message_without_a_traceback(
     assert "Traceback" not in err
 
 
-def test_an_over_budget_animation_reports_the_clamp(tmp_path, no_network,
-                                                    capsys):
-    d = display(tmp_path, """
+OVER_BUDGET = """
 from PIL import Image
 def render():
-    return [Image.new("RGB", (64, 32)) for _ in range(500)]
-""")
-    cli.main(["show", str(d), "-o", str(tmp_path / "o")])
-    combined = capsys.readouterr()
-    assert "145" in (combined.out + combined.err)
+    return [Image.new("RGB", (64, 32)) for _ in range(300)]
+"""
+
+
+def test_an_over_budget_animation_reports_the_clamp(tmp_path, no_network,
+                                                    capsys):
+    """The old version of this test asserted only that "145" appeared
+    somewhere in the output -- which _render prints on every single run
+    as part of `preview: o.gif (145 frames)`. It passed against code
+    that dropped 155 frames in total silence. Assert on the budget
+    message itself: the count dropped, and the reason."""
+    cli.main(["show", str(display(tmp_path, OVER_BUDGET)),
+              "-o", str(tmp_path / "o")])
+    err = capsys.readouterr().err
+    assert "dropped" in err.lower()
+    assert "155" in err            # 300 requested - 145 kept
+    assert "300" in err            # what render() actually asked for
+    assert "14500" in err          # the ceiling it broke
+
+
+def test_preview_reports_the_clamp_too_without_ever_pushing(tmp_path,
+                                                            no_network,
+                                                            capsys):
+    """An agent iterating with preview alone must learn its animation is
+    too long before it ever runs show."""
+    assert cli.main(["preview", str(display(tmp_path, OVER_BUDGET)),
+                     "-o", str(tmp_path / "o")]) == 0
+    err = capsys.readouterr().err
+    assert "dropped" in err.lower() and "155" in err
+    assert no_network.calls == []
+
+
+def test_over_budget_text_reports_the_clamp(tmp_path, no_network, capsys):
+    """`llmbyt text` loses the tail of the user's own message the same
+    way a display does, and must say so."""
+    long = " ".join(["word"] * 400)
+    assert cli.main(["text", long, "-o", str(tmp_path / "o")]) == 0
+    err = capsys.readouterr().err
+    assert "dropped" in err.lower() and "14500" in err
 
 
 def test_frame_ms_alone_over_the_ceiling_reports_that_distinct_failure(
@@ -252,3 +284,80 @@ def test_scale_option_changes_the_preview_size(tmp_path):
     out = tmp_path / "o.png"
     cli.main(["preview", str(display(tmp_path)), "-o", str(out), "--scale", "4"])
     assert Image.open(out).size == (64 * 4 + 2, 32 * 4 + 2)
+
+
+# --- stale artifacts --------------------------------------------------
+
+def test_a_failed_render_removes_the_previous_preview(tmp_path, capsys):
+    """An agent iterating against a stale PNG cannot tell that it is
+    stale: it reads the error, opens the image, and sees the bug it
+    thought it just fixed."""
+    out = tmp_path / "o.png"
+    good = display(tmp_path, """
+from llmbyt import scene as sc
+def render():
+    return sc.Text("hi")
+""")
+    assert cli.main(["preview", str(good), "-o", str(out)]) == 0
+    assert out.exists()
+
+    bad = display(tmp_path, """
+from llmbyt import scene as sc
+def render():
+    return sc.Text("x" * 40)
+""")
+    assert cli.main(["preview", str(bad), "-o", str(out)]) == 1
+    assert "Marquee" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_a_static_run_after_an_animated_one_leaves_exactly_one_artifact(
+        tmp_path):
+    """-o names a stem; write() picks .png or .gif from the frame count.
+    A leftover .gif beside a new .png is an agent opening the wrong
+    file."""
+    stem = tmp_path / "o"
+    animated = display(tmp_path, """
+from PIL import Image
+def render():
+    return [Image.new("RGB", (64, 32), (i, 0, 0)) for i in range(3)]
+""", )
+    assert cli.main(["preview", str(animated), "-o", str(stem)]) == 0
+    assert (tmp_path / "o.gif").exists()
+
+    static = display(tmp_path, """
+from llmbyt import scene as sc
+def render():
+    return sc.Text("hi")
+""")
+    assert cli.main(["preview", str(static), "-o", str(stem)]) == 0
+    assert (tmp_path / "o.png").exists()
+    assert not (tmp_path / "o.gif").exists()
+    assert sorted(p.name for p in tmp_path.glob("o.*")) == ["o.png"]
+
+
+def test_a_successful_run_still_reports_the_path_it_really_wrote(tmp_path,
+                                                                 capsys):
+    stem = tmp_path / "o"
+    assert cli.main(["preview", str(display(tmp_path)), "-o", str(stem)]) == 0
+    out = capsys.readouterr().out
+    assert str(tmp_path / "o.png") in out
+    assert (tmp_path / "o.png").exists()
+
+
+def test_image_is_centred_not_flush_to_the_top_edge(tmp_path, no_network):
+    from PIL import Image
+    src = tmp_path / "src.png"
+    # 64x16 after fit=contain: 8px of slack above and below when centred.
+    Image.new("RGB", (256, 64), (200, 0, 0)).save(src)
+    out = tmp_path / "o.png"
+    assert cli.main(["image", str(src), "-o", str(out)]) == 0
+
+    from llmbyt import scene as sc
+    frames, _ = sc.render_scene(
+        sc.Column([sc.Sprite(str(src), fit="contain")],
+                  justify="center", align="center"))
+    lit_rows = [y for y in range(32)
+                if any(frames[0].getpixel((x, y)) != (0, 0, 0)
+                       for x in range(64))]
+    assert lit_rows[0] == 8 and lit_rows[-1] == 23
