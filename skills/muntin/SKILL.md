@@ -12,7 +12,12 @@ place to print the sentence you already wrote. A composed display is the
 interesting thing here; `muntin text "done"` is the least interesting
 thing you can do with it.
 
+Needs `muntin` on PATH; to push to the device, `muntin init` must have
+been run once (or `MUNTIN_DEVICE_ID`/`MUNTIN_API_TOKEN` set).
+
 ## The loop
+
+Always preview and look before you show; never skip it.
 
     muntin preview thing.py -o /tmp/thing
 
@@ -42,8 +47,8 @@ from muntin import scene as sc
 
 def render():
     return sc.Column([
-        sc.Text("DEPLOYED", color=cv.GREEN),
-        sc.Text("in 4.2s", color=cv.DIM),
+        sc.Text("WOO", color=cv.GREEN),
+        sc.Text("nice one", color=cv.DIM),
     ], gap=2, align="center", justify="center")
 ```
 

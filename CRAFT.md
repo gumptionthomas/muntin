@@ -117,5 +117,6 @@ more control. See `examples/bounce.py`.
 | `examples/sparkline.py` | data, `Plot`, a `Row` label above it |
 | `examples/message.py` | overflow handled by scrolling |
 | `examples/bounce.py` | the raw escape hatch, frame by frame |
+| `examples/celebrate.py` | a display made for a moment: motion behind a headline |
 
-All four are rendered by the test suite, so they cannot rot.
+All five are rendered by the test suite, so they cannot rot.
