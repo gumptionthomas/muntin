@@ -69,3 +69,46 @@ def test_empty_frames_is_a_loud_error(tmp_path):
 def test_parent_directories_are_created(tmp_path):
     p = preview.write(frames(1), tmp_path / "deep" / "nested" / "o")
     assert p.exists()
+
+
+def test_wrong_size_frame_names_the_offender_expected_size_and_the_fix(tmp_path):
+    bad = [cv.Canvas().snapshot(), Image.new("RGB", (10, 10))]
+    with pytest.raises(preview.PreviewError) as e:
+        preview.write(bad, tmp_path / "o")
+    msg = str(e.value)
+    assert "frame 1" in msg and "10x10" in msg and "64x32" in msg
+    # constraint + violation alone isn't enough; must also say the fix
+    assert "resize" in msg.lower() or "crop" in msg.lower()
+
+
+def test_nonpositive_frame_ms_is_a_loud_error(tmp_path):
+    with pytest.raises(preview.PreviewError) as e:
+        preview.write(frames(1), tmp_path / "o", frame_ms=-50)
+    msg = str(e.value)
+    assert "frame_ms" in msg and "-50" in msg
+    assert "positive" in msg.lower()
+
+
+def test_zero_frame_ms_is_a_loud_error(tmp_path):
+    with pytest.raises(preview.PreviewError) as e:
+        preview.write(frames(1), tmp_path / "o", frame_ms=0)
+    msg = str(e.value)
+    assert "frame_ms" in msg and "0" in msg
+    assert "positive" in msg.lower()
+
+
+def test_non_integer_scale_is_a_loud_error(tmp_path):
+    with pytest.raises(preview.PreviewError) as e:
+        preview.write(frames(1), tmp_path / "o", scale=2.5)
+    msg = str(e.value)
+    assert "scale" in msg and "2.5" in msg
+    assert "integer" in msg.lower()
+
+
+def test_scale_less_than_one_names_the_fix(tmp_path):
+    with pytest.raises(preview.PreviewError) as e:
+        preview.write(frames(1), tmp_path / "o", scale=0)
+    msg = str(e.value)
+    assert "scale" in msg and "0" in msg
+    # constraint + violation alone isn't enough; must also say the fix
+    assert "pass" in msg.lower() or "use" in msg.lower()
