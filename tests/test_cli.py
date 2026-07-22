@@ -336,6 +336,73 @@ def render():
     assert sorted(p.name for p in tmp_path.glob("o.*")) == ["o.png"]
 
 
+def test_o_pointing_at_the_display_file_itself_survives_a_failed_render(
+        tmp_path, capsys):
+    """Regression: clear(args.out) used to unlink args.out unconditionally,
+    including a .py file -- so `llmbyt preview clock.py -o clock.py` wiped
+    the display's own source before frames_from() ever got to read it,
+    and reported "No such display" for a file that existed until llmbyt
+    deleted it."""
+    src = display(tmp_path, """
+from llmbyt import scene as sc
+def render():
+    return sc.Text("x" * 40)   # too wide -- Marquee-triggering failure
+""")
+    src.rename(tmp_path / "clock.py")
+    clock = tmp_path / "clock.py"
+    original = clock.read_text()
+
+    assert cli.main(["preview", str(clock), "-o", str(clock)]) != 0
+    assert clock.exists()
+    assert clock.read_text() == original
+
+
+def test_o_pointing_at_the_display_file_itself_survives_a_successful_render(
+        tmp_path, capsys):
+    """Same shape as above but the render succeeds. write() cannot
+    literally write a .png to a .py path, so this must fail loudly with a
+    named PreviewError -- and must not delete the source either way."""
+    good = display(tmp_path)
+    good.rename(tmp_path / "clock.py")
+    clock = tmp_path / "clock.py"
+    original = clock.read_text()
+
+    rc = cli.main(["preview", str(clock), "-o", str(clock)])
+    assert rc != 0
+    err = capsys.readouterr().err
+    assert "Traceback" not in err
+    assert clock.exists()
+    assert clock.read_text() == original
+
+
+def test_default_o_never_deletes_an_unrelated_file_named_out(tmp_path):
+    """Regression: the documented default invocation (`llmbyt preview
+    d.py`, -o defaulting to the bare stem "out") used to delete a plain
+    file literally named "out" sitting in the working directory, silently
+    and with exit 0. candidates() must never include the bare stem."""
+    out = tmp_path / "out"
+    out.write_text("the user's own file, not a preview\n")
+
+    assert cli.main(["preview", str(display(tmp_path)), "-o", str(out)]) == 0
+    assert out.exists()
+    assert out.read_text() == "the user's own file, not a preview\n"
+    assert (tmp_path / "out.png").exists()
+
+
+def test_a_foreign_o_suffix_is_a_named_preview_error_not_a_traceback(
+        tmp_path, capsys):
+    out = tmp_path / "notes.txt"
+    out.write_text("do not touch")
+
+    assert cli.main(["preview", str(display(tmp_path)),
+                     "-o", str(out)]) == 1
+    err = capsys.readouterr().err
+    assert "Traceback" not in err
+    assert ".txt" in err
+    assert out.exists()
+    assert out.read_text() == "do not touch"
+
+
 def test_a_successful_run_still_reports_the_path_it_really_wrote(tmp_path,
                                                                  capsys):
     stem = tmp_path / "o"

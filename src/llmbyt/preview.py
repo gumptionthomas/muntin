@@ -35,14 +35,24 @@ def _check_frame_ms(frame_ms: int) -> None:
 def candidates(path):
     """Every file a preview run could leave at this output stem.
 
-    write() picks .png or .gif from the frame count, so one stem owns two
-    possible artifacts.
+    Mirrors what write() can actually produce, and nothing wider: write()
+    only ever touches the literal path when it already ends in .png or
+    .gif, and otherwise treats the path as a bare stem and appends .png
+    or .gif itself. clear() must never be handed a path write() could
+    not have authored -- that includes the bare stem itself (e.g. the
+    default -o "out": write() would produce "out.png"/"out.gif", never
+    a file literally named "out") and any other foreign suffix (e.g.
+    "-o clock.py": write() never writes to "clock.py").
     """
     path = pathlib.Path(path)
-    try:
-        return [path, path.with_suffix(".png"), path.with_suffix(".gif")]
-    except ValueError:                      # no name to hang a suffix on
+    if path.suffix in (".png", ".gif"):
         return [path]
+    if path.suffix:
+        return []                            # write() would never touch this
+    try:
+        return [path.with_suffix(".png"), path.with_suffix(".gif")]
+    except ValueError:                       # no name to hang a suffix on
+        return []
 
 
 def clear(path):
@@ -97,6 +107,13 @@ def write(frames, path, scale=DEFAULT_SCALE, grid=True, frame_ms=100):
         )
 
     path = pathlib.Path(path)
+    if path.suffix and path.suffix not in (".png", ".gif"):
+        raise PreviewError(
+            f"Unknown output extension {path.suffix!r} for {path}. llmbyt "
+            f"only writes .png (static) or .gif (animated). Pass -o with "
+            f"one of those extensions, or no extension at all and let "
+            f"llmbyt pick .png/.gif from the frame count."
+        )
     if not path.suffix:
         path = path.with_suffix(".png" if len(frames) == 1 else ".gif")
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -125,3 +125,14 @@ def test_max_frames_rejects_zero_frame_ms():
 def test_max_frames_rejects_negative_frame_ms():
     with pytest.raises(encode.EncodeError, match="frame_ms"):
         encode.max_frames(-1)
+
+
+def test_take_rejects_a_producer_that_returns_the_wrong_frame_count():
+    """take() is the one place a frame count gets clamped; if a producer
+    ignores the n it's handed, the Budget it built (kept=145) silently
+    lies about what actually came back (5) -- exactly the bug class take()
+    exists to close."""
+    with pytest.raises(encode.EncodeError) as e:
+        encode.take(lambda n: [0] * 5, 300)
+    msg = str(e.value)
+    assert "5" in msg and "145" in msg

@@ -35,7 +35,7 @@ def assert_golden(img, name):
     if diff.getbbox() is not None:
         img.save(DIR / f"{name}.actual.png")
         ImageChops.invert(diff.convert("L")).save(DIR / f"{name}.diff.png")
-        n = sum(1 for p in diff.convert("L").getdata() if p)
+        n = sum(1 for p in diff.convert("L").get_flattened_data() if p)
         raise AssertionError(
             f"{name}: {n} pixels differ from the golden. Wrote "
             f"{name}.actual.png and {name}.diff.png beside it. "

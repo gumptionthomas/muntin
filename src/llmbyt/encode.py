@@ -100,7 +100,15 @@ def take(produce, requested: int, frame_ms: int = FRAME_MS_DEFAULT
     as well as `show`.
     """
     b = budget(requested, frame_ms)
-    return list(produce(b.kept)), b
+    frames = list(produce(b.kept))
+    if len(frames) != b.kept:
+        raise EncodeError(
+            f"produce(n) must return exactly n frames: called with "
+            f"n={b.kept} (the Budget's kept count) but it returned "
+            f"{len(frames)}. Fix the producer passed to take() so it "
+            f"returns exactly the requested count."
+        )
+    return frames, b
 
 
 def to_webp(frames, frame_ms: int = FRAME_MS_DEFAULT) -> tuple[bytes, Budget]:

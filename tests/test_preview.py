@@ -112,3 +112,80 @@ def test_scale_less_than_one_names_the_fix(tmp_path):
     assert "scale" in msg and "0" in msg
     # constraint + violation alone isn't enough; must also say the fix
     assert "pass" in msg.lower() or "use" in msg.lower()
+
+
+def test_foreign_output_suffix_is_a_named_preview_error(tmp_path):
+    with pytest.raises(preview.PreviewError) as e:
+        preview.write(frames(1), tmp_path / "o.txt")
+    msg = str(e.value)
+    assert ".txt" in msg
+    # names both accepted extensions and the fix
+    assert ".png" in msg and ".gif" in msg
+
+
+# --- candidates()/clear() blast radius ---------------------------------
+#
+# clear() exists to delete a stale preview before rendering. candidates()
+# is what tells it what "a preview" even is, and it must mirror write()'s
+# actual behaviour exactly -- write() only ever touches the literal path
+# when that path already ends in .png or .gif; a bare stem or a foreign
+# suffix are never written to literally. Anything wider than that is a
+# data-loss bug: clear() unlinking a file llmbyt never authored.
+
+def test_candidates_for_a_png_path_is_just_that_path(tmp_path):
+    p = tmp_path / "o.png"
+    assert preview.candidates(p) == [p]
+
+
+def test_candidates_for_a_gif_path_is_just_that_path(tmp_path):
+    p = tmp_path / "o.gif"
+    assert preview.candidates(p) == [p]
+
+
+def test_candidates_for_a_foreign_suffix_is_empty(tmp_path):
+    """write() never writes to a .py (or any non-image-suffixed) path
+    literally, so clear() must never consider deleting it."""
+    assert preview.candidates(tmp_path / "clock.py") == []
+
+
+def test_candidates_for_a_bare_stem_is_only_the_two_image_variants(tmp_path):
+    """The bare stem itself (e.g. the default -o "out") is never a path
+    write() would produce -- only "out.png"/"out.gif" are."""
+    stem = tmp_path / "out"
+    assert preview.candidates(stem) == [
+        stem.with_suffix(".png"), stem.with_suffix(".gif")]
+
+
+def test_clear_never_deletes_a_file_with_a_foreign_suffix(tmp_path):
+    src = tmp_path / "clock.py"
+    src.write_text("# the user's source, not an llmbyt artifact\n")
+    preview.clear(src)
+    assert src.exists()
+    assert src.read_text() == "# the user's source, not an llmbyt artifact\n"
+
+
+def test_clear_never_deletes_a_suffixless_file_matching_the_stem(tmp_path):
+    """The documented default invocation (`llmbyt preview d.py`, -o
+    defaulting to "out") must not destroy a plain file named "out"."""
+    out = tmp_path / "out"
+    out.write_text("the user's data, not a preview\n")
+    preview.clear(out)
+    assert out.exists()
+    assert out.read_text() == "the user's data, not a preview\n"
+
+
+def test_clear_still_removes_a_stale_png_and_gif_for_a_bare_stem(tmp_path):
+    stem = tmp_path / "o"
+    png, gif = stem.with_suffix(".png"), stem.with_suffix(".gif")
+    png.write_bytes(b"stale png")
+    gif.write_bytes(b"stale gif")
+    preview.clear(stem)
+    assert not png.exists()
+    assert not gif.exists()
+
+
+def test_clear_still_removes_a_stale_explicit_png(tmp_path):
+    p = tmp_path / "o.png"
+    p.write_bytes(b"stale")
+    preview.clear(p)
+    assert not p.exists()
