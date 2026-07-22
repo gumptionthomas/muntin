@@ -10,9 +10,11 @@ the level of control:
 There is no mode flag: the escape hatch is returning something
 lower-level.
 """
+import collections.abc
 import hashlib
 import importlib.util
 import pathlib
+import sys
 
 from PIL import Image
 
@@ -30,17 +32,34 @@ def load_display(path):
     """Import the module at path and return its render callable."""
     path = pathlib.Path(path)
     if not path.exists():
-        raise DisplayError(f"No such display: {path}")
+        raise DisplayError(
+            f"No such display: {path}. Check the path — it must point to "
+            f"an existing .py file that defines render()."
+        )
 
     # Unique module name per path, so two displays that share a basename
     # cannot overwrite each other in sys.modules.
     digest = hashlib.sha1(str(path.resolve()).encode()).hexdigest()[:8]
-    spec = importlib.util.spec_from_file_location(
-        f"llmbyt_display_{digest}", path)
+    name = f"llmbyt_display_{digest}"
+    spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
-        raise DisplayError(f"Cannot import {path} as a Python module.")
+        found = "a directory" if path.is_dir() else (path.suffix or "no extension")
+        raise DisplayError(
+            f"Cannot import {path} as a Python module (found {found}). "
+            f"Displays must be a .py file — point to a Python source file."
+        )
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # Register before exec, matching the standard importlib recipe: a
+    # dataclass (or anything else pickle-by-reference) defined in the
+    # display module needs `sys.modules[name]` to resolve back to it.
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        # Don't leave a half-initialized module behind for a later
+        # load_display(same path) to trip over.
+        del sys.modules[name]
+        raise
 
     render = getattr(module, "render", None)
     if render is None:
@@ -60,9 +79,23 @@ def normalize(value, frame_ms=_encode.FRAME_MS_DEFAULT):
     if isinstance(value, _scene.Node):
         return _scene.render_scene(value, frame_ms=frame_ms)
 
+    # A dict has __iter__ and isn't str/bytes, so without this guard it
+    # falls into the iterable branch and silently becomes list(dict) --
+    # its *keys*. Returning a config/state dict by mistake is plausible,
+    # so it needs to land on the same three-accepted-forms message as
+    # any other wrong return type, instead of a misleading per-item
+    # error that names the type of the first key and never says "dict".
+    #
+    # A `set` was considered too (iteration order is meaningless for
+    # animation frames), but PIL.Image is unhashable: a set literally
+    # containing frame Images can't be constructed, so Python itself
+    # raises a clear TypeError at the user's return statement before
+    # normalize() ever runs. There's no misleading-message case to fix
+    # there, so it's left alone.
+    not_a_sequence = (str, bytes, collections.abc.Mapping)
     if isinstance(value, Image.Image):
         frames = [value]
-    elif hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+    elif hasattr(value, "__iter__") and not isinstance(value, not_a_sequence):
         frames = list(value)
     else:
         raise DisplayError(
