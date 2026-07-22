@@ -45,7 +45,10 @@ def candidates(path):
     "-o clock.py": write() never writes to "clock.py").
     """
     path = pathlib.Path(path)
-    if path.suffix in (".png", ".gif"):
+    # Case-insensitive, because write() accepts -o shot.PNG: PIL picks the
+    # format from the lowercased extension. A case-sensitive check here
+    # would leave shot.PNG unclearable while still writable.
+    if path.suffix.lower() in (".png", ".gif"):
         return [path]
     if path.suffix:
         return []                            # write() would never touch this
@@ -107,7 +110,7 @@ def write(frames, path, scale=DEFAULT_SCALE, grid=True, frame_ms=100):
         )
 
     path = pathlib.Path(path)
-    if path.suffix and path.suffix not in (".png", ".gif"):
+    if path.suffix and path.suffix.lower() not in (".png", ".gif"):
         raise PreviewError(
             f"Unknown output extension {path.suffix!r} for {path}. llmbyt "
             f"only writes .png (static) or .gif (animated). Pass -o with "
@@ -115,7 +118,14 @@ def write(frames, path, scale=DEFAULT_SCALE, grid=True, frame_ms=100):
             f"llmbyt pick .png/.gif from the frame count."
         )
     if not path.suffix:
-        path = path.with_suffix(".png" if len(frames) == 1 else ".gif")
+        try:
+            path = path.with_suffix(".png" if len(frames) == 1 else ".gif")
+        except ValueError:                   # '.', '/', '' -- no name to suffix
+            raise PreviewError(
+                f"Cannot write a preview to {str(path)!r}: it has no filename "
+                f"to build an output name from. Pass -o with a file name, "
+                f"e.g. -o out or -o out.png."
+            ) from None
     path.parent.mkdir(parents=True, exist_ok=True)
 
     shots = [_decorate(f, scale, grid) for f in frames]

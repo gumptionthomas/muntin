@@ -35,7 +35,10 @@ def assert_golden(img, name):
     if diff.getbbox() is not None:
         img.save(DIR / f"{name}.actual.png")
         ImageChops.invert(diff.convert("L")).save(DIR / f"{name}.diff.png")
-        n = sum(1 for p in diff.convert("L").get_flattened_data() if p)
+        # histogram()[1:] counts every non-zero luminance bucket. Works on
+        # any Pillow; get_flattened_data() would raise below 11.3, and this
+        # runs on the failure path where a second error helps nobody.
+        n = sum(diff.convert("L").histogram()[1:])
         raise AssertionError(
             f"{name}: {n} pixels differ from the golden. Wrote "
             f"{name}.actual.png and {name}.diff.png beside it. "

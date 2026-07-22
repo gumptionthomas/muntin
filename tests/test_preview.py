@@ -189,3 +189,21 @@ def test_clear_still_removes_a_stale_explicit_png(tmp_path):
     p.write_bytes(b"stale")
     preview.clear(p)
     assert not p.exists()
+
+
+def test_uppercase_extension_is_accepted_and_clearable(tmp_path):
+    # PIL picks the format from the lowercased extension, so -o shot.PNG
+    # writes fine. A case-sensitive guard would make it writable but not
+    # clearable, leaving a stale artifact no failed run could remove.
+    out = tmp_path / "shot.PNG"
+    assert preview.write(frames(1), out).name == "shot.PNG"
+    assert out.exists()
+    assert preview.candidates(out) == [out]
+    preview.clear(out)
+    assert not out.exists()
+
+
+def test_a_path_with_no_filename_is_a_named_error_not_a_raw_valueerror(tmp_path):
+    for bad in (".", "/", ""):
+        with pytest.raises(preview.PreviewError, match="no filename"):
+            preview.write(frames(1), bad)
