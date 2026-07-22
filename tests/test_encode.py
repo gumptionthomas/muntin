@@ -71,3 +71,57 @@ def test_wrong_size_frame_names_the_offender_and_the_expected_size():
 def test_nonpositive_frame_ms_is_a_loud_error():
     with pytest.raises(encode.EncodeError, match="frame_ms"):
         encode.to_webp(frames(2), frame_ms=0)
+
+
+def test_nonpositive_frame_ms_message_names_the_fix():
+    with pytest.raises(encode.EncodeError) as e:
+        encode.to_webp(frames(2), frame_ms=0)
+    msg = str(e.value)
+    assert "frame_ms" in msg and "0" in msg
+    # constraint + violation alone isn't enough; must also say the fix
+    assert "positive" in msg.lower()
+
+
+def test_dropped_frames_message_wording_is_unchanged():
+    msg = encode.budget(1000, 100).message()
+    assert msg == (
+        "Animation is 1000 frames x 100ms = "
+        "100000ms, over the 14500ms device "
+        "ceiling. Kept the first 145 frames and dropped "
+        "855. Shorten the animation or lower frame_ms."
+    )
+
+
+def test_frame_ms_over_ceiling_fails_even_with_nothing_dropped():
+    b = encode.budget(1, 15000)
+    assert b.kept == 1
+    assert b.dropped == 0
+    assert b.duration_ms == 15000
+    assert b.fits is False
+    msg = b.message()
+    assert msg is not None
+    assert "15000" in msg
+    assert "14500" in msg
+    assert "frame_ms" in msg
+    # must be distinguishable from the dropped-frames message
+    assert "Kept the first" not in msg
+
+
+def test_budget_rejects_zero_frame_ms():
+    with pytest.raises(encode.EncodeError, match="frame_ms"):
+        encode.budget(5, 0)
+
+
+def test_budget_rejects_negative_frame_ms():
+    with pytest.raises(encode.EncodeError, match="frame_ms"):
+        encode.budget(5, -100)
+
+
+def test_max_frames_rejects_zero_frame_ms():
+    with pytest.raises(encode.EncodeError, match="frame_ms"):
+        encode.max_frames(0)
+
+
+def test_max_frames_rejects_negative_frame_ms():
+    with pytest.raises(encode.EncodeError, match="frame_ms"):
+        encode.max_frames(-1)
