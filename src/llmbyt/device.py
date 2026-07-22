@@ -78,10 +78,34 @@ def load_config(env=None, path=None) -> Config:
 def save_config(cfg: Config, path=None) -> pathlib.Path:
     path = CONFIG_PATH if path is None else pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    body = (f"device_id = {json.dumps(cfg.device_id)}\n"
-            f"api_token = {json.dumps(cfg.api_token)}\n")
-    path.write_text(body)
-    path.chmod(0o600)
+    # ensure_ascii=False: with the default (True), characters outside the
+    # Basic Multilingual Plane are emitted as UTF-16 surrogate pairs, which
+    # are not valid TOML \uXXXX escapes (a lone surrogate is not a Unicode
+    # scalar value) -- tomllib then refuses to load the file we just wrote.
+    # With ensure_ascii=False those characters are written literally, which
+    # is valid inside a TOML basic string; ", \, and control characters are
+    # still escaped either way, since that escaping doesn't depend on
+    # ensure_ascii.
+    body = (f"device_id = {json.dumps(cfg.device_id, ensure_ascii=False)}\n"
+            f"api_token = {json.dumps(cfg.api_token, ensure_ascii=False)}\n")
+
+    # Open with the restrictive mode from the outset so the token-bearing
+    # file is never created world- or group-readable, regardless of the
+    # process umask (umask can only clear bits, and 0o600 has none set in
+    # the group/other range for it to clear). os.open()'s mode argument
+    # only applies at creation time though -- if `path` already exists
+    # (e.g. a prior, looser save) its mode is left untouched by O_CREAT, so
+    # fchmod it explicitly before writing any bytes. That closes the gap
+    # for both the new-file and pre-existing-file cases before the token
+    # ever hits disk.
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+    except BaseException:
+        os.close(fd)
+        raise
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(body)
     return path
 
 
@@ -97,14 +121,25 @@ def _post(url, body, headers) -> int:
 
 _HINTS = {
     401: "the API token was rejected. Check it, or re-run `llmbyt init`.",
-    403: "the API token is not permitted to push to this device.",
+    403: ("the API token is not permitted to push to this device. Generate "
+          "a new token for this device in the Tidbyt app, then re-run "
+          "`llmbyt init`."),
     404: "no such device. Check the device ID, or re-run `llmbyt init`.",
 }
+
+_GENERIC_STATUS_HINT = (
+    "the Tidbyt API rejected the push. Wait a moment and retry; if it keeps "
+    "happening, check https://tidbyt.dev/status or contact Tidbyt support "
+    "with this status code."
+)
 
 
 def push(webp: bytes, cfg: Config, *, poster=None) -> None:
     if not webp:
-        raise PushError("Refusing to push an empty payload.")
+        raise PushError(
+            "Refusing to push an empty payload -- render or encode a frame "
+            "before calling push()."
+        )
 
     body = json.dumps({
         "image": base64.b64encode(webp).decode(),
@@ -114,13 +149,26 @@ def push(webp: bytes, cfg: Config, *, poster=None) -> None:
     headers = {"Authorization": "Bearer " + cfg.api_token,
                "Content-Type": "application/json"}
 
+    # Build the wrapped error inside the except block (which only records
+    # its message as a string, not the original exception object) but
+    # raise it after the try/except statement has fully exited. At that
+    # point no exception is being handled, so the interpreter has nothing
+    # to attach as __context__ -- the unredacted transport exception is
+    # never reachable from the raised PushError, not even via
+    # err.__context__ for tooling that walks it directly.
+    transport_error = None
     try:
         status = (poster or _post)(PUSH_URL % cfg.device_id, body, headers)
-    except Exception as e:                    # noqa: BLE001 -- reraised below
-        raise PushError(
-            f"Push failed before a response: {cfg.redact(e)}"
-        ) from None
+    except Exception as e:                    # noqa: BLE001 -- wrapped below
+        transport_error = PushError(
+            f"Push failed before a response reached the Tidbyt API: "
+            f"{cfg.redact(e)}. Check your network connection and that "
+            f"api.tidbyt.com is reachable, then retry."
+        )
+
+    if transport_error is not None:
+        raise transport_error
 
     if status != 200:
-        hint = _HINTS.get(status, "the Tidbyt API rejected the push.")
+        hint = _HINTS.get(status, _GENERIC_STATUS_HINT)
         raise PushError(cfg.redact(f"Push returned HTTP {status} -- {hint}"))
