@@ -28,6 +28,13 @@ nobody picks up. muntin's gap is the same shape, and it does not require MCP to 
 | Cadence | **A few times a session** — when something lands |
 | Mechanism | A **skill**, with the `CLAUDE.md` one-liner kept as the fallback for harnesses without skills |
 
+The original intent, in the author's words: the display should let an agent **communicate
+in images rather than only in text.** That is the purpose "delight, not status" is
+serving. The display is not a second channel for the same sentences — it is the one place
+an agent can say something it has no words for. Anything that reduces it to rendered text
+has missed the point, which is also why `muntin text` is the least interesting verb here
+and a composed display is the interesting one.
+
 "Delight, not status" is the load-bearing decision. It rules out the ambient-status
 design, and it means the skill cannot merely grant permission — it has to carry craft. An
 agent that pushes something illegible at 64×32 is worse than one that never pushes at
