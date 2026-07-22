@@ -62,6 +62,12 @@ class Text(Node):
 
 class _Container(Node):
     def __init__(self, children, gap=0, align="start", justify="start"):
+        if gap < 0:
+            raise SceneError(
+                f"gap={gap!r} is not valid. gap must be >= 0 -- a negative "
+                f"gap would drive the main-axis measure() negative. Pass "
+                f"gap=0 or a positive integer."
+            )
         self.children = list(children)
         self.gap = gap
         self.align = _check_alignment("align", align)
@@ -134,5 +140,4 @@ class Stack(Node):
 
     def draw(self, canvas, box, t):
         for child in self.children:
-            cw, ch = child.measure()
-            child.draw(canvas, (box[0], box[1], cw, ch), t)
+            child.draw(canvas, box, t)

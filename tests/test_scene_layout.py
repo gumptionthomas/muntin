@@ -116,3 +116,29 @@ def test_drawing_is_deterministic_for_the_same_box_and_t():
     node.draw(a, (0, 0, 64, 32), 0)
     node.draw(b, (0, 0, 64, 32), 0)
     assert a.img.tobytes() == b.img.tobytes()
+
+
+def test_stack_hands_children_its_own_box_so_they_can_still_align():
+    # An alignment-aware child nested in a Stack must land at the same
+    # pixels as the same child drawn directly with the same box. Before
+    # the fix, Stack.draw handed each child a box sized to the child's
+    # own measure() (available == used), collapsing every align/justify
+    # mode to "start" -- silently, with no error.
+    direct = cv.Canvas()
+    sc.Row([sc.Text("!")], justify="center").draw(direct, (0, 0, 64, 32), 0)
+    direct_min_x = min(x for x, _ in lit(direct))
+
+    nested = cv.Canvas()
+    sc.Stack([sc.Row([sc.Text("!")], justify="center")]).draw(
+        nested, (0, 0, 64, 32), 0)
+    nested_min_x = min(x for x, _ in lit(nested))
+
+    assert direct_min_x == 31
+    assert nested_min_x == direct_min_x
+
+
+def test_negative_gap_names_the_constraint_and_the_fix():
+    with pytest.raises(sc.SceneError) as e:
+        sc.Row([sc.Text("a"), sc.Text("b")], gap=-100)
+    msg = str(e.value)
+    assert "gap" in msg and "-100" in msg
