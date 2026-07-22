@@ -78,3 +78,57 @@ def test_glyphs_never_exceed_the_cell():
 
 def test_unknown_character_renders_blank_rather_than_crashing():
     assert _ink("☃") == set()   # snowman, not in either font
+
+
+def test_parse_rejects_bdf_without_fontboundingbox(tmp_path):
+    """BDF file missing FONTBOUNDINGBOX must state the fix."""
+    bdf_file = tmp_path / "no_bbox.bdf"
+    bdf_file.write_text("FONT TestFont\nENDCHAR\n", encoding="latin-1")
+
+    with pytest.raises(font.FontError) as exc_info:
+        font._parse("test", str(bdf_file))
+
+    error_msg = str(exc_info.value)
+    assert "FONTBOUNDINGBOX" in error_msg
+    assert "fix" in error_msg.lower() or "add" in error_msg.lower()
+
+
+def test_parse_rejects_bdf_without_ascii_glyphs(tmp_path):
+    """BDF file with FONTBOUNDINGBOX but no ASCII glyphs must state the fix."""
+    bdf_file = tmp_path / "no_ascii.bdf"
+    bdf_file.write_text(
+        "FONTBOUNDINGBOX 4 6 0 0\n"
+        "ENCODING 200\n"  # Non-ASCII codepoint
+        "DWIDTH 4 0\n"
+        "BBX 4 6 0 0\n"
+        "BITMAP\n"
+        "00\nENDCHAR\n",
+        encoding="latin-1"
+    )
+
+    with pytest.raises(font.FontError) as exc_info:
+        font._parse("test", str(bdf_file))
+
+    error_msg = str(exc_info.value)
+    assert "ASCII" in error_msg or "32-126" in error_msg
+    assert "fix" in error_msg.lower() or "add" in error_msg.lower()
+
+
+def test_parse_rejects_ascii_glyphs_without_dwidth(tmp_path):
+    """BDF file with ASCII glyphs but no DWIDTH must state the fix."""
+    bdf_file = tmp_path / "no_dwidth.bdf"
+    bdf_file.write_text(
+        "FONTBOUNDINGBOX 4 6 0 0\n"
+        "ENCODING 65\n"  # 'A'
+        "BBX 4 6 0 0\n"
+        "BITMAP\n"
+        "00\nENDCHAR\n",
+        encoding="latin-1"
+    )
+
+    with pytest.raises(font.FontError) as exc_info:
+        font._parse("test", str(bdf_file))
+
+    error_msg = str(exc_info.value)
+    assert "DWIDTH" in error_msg
+    assert "fix" in error_msg.lower() or "add" in error_msg.lower()

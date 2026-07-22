@@ -99,15 +99,24 @@ def _parse(name, path) -> Font:
             rows.append(int(p[0], 16))
 
     if char_h is None:
-        raise FontError(f"{path} has no FONTBOUNDINGBOX; not a usable BDF.")
+        raise FontError(
+            f"{path} has no FONTBOUNDINGBOX; not a usable BDF. "
+            f"Add a FONTBOUNDINGBOX line with format: FONTBOUNDINGBOX width height xoff yoff."
+        )
     if not raw:
-        raise FontError(f"{path} defines no ASCII glyphs (codepoints 32-126).")
+        raise FontError(
+            f"{path} defines no ASCII glyphs (codepoints 32-126). "
+            f"Add glyphs for printable ASCII characters (space through tilde) to this BDF file."
+        )
 
     # Cell width is the ASCII advance width. FONTBOUNDINGBOX lies for
     # tom-thumb (says 3, is 4), and non-ASCII glyphs may advance further.
     widths = {w for w, _, _ in raw.values() if w}
     if not widths:
-        raise FontError(f"{path} has no DWIDTH on its ASCII glyphs.")
+        raise FontError(
+            f"{path} has no DWIDTH on its ASCII glyphs. "
+            f"Add a DWIDTH line to each glyph with format: DWIDTH width 0."
+        )
     char_w = max(widths)
 
     glyphs = {chr(c): _cell(b, r, char_w, char_h, descent)
