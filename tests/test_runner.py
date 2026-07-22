@@ -3,8 +3,8 @@ import sys
 import pytest
 from PIL import Image
 
-from llmbyt import canvas as cv
-from llmbyt import runner
+from muntin import canvas as cv
+from muntin import runner
 
 
 def display(tmp_path, body, name="d.py"):
@@ -15,7 +15,7 @@ def display(tmp_path, body, name="d.py"):
 
 def test_loads_and_calls_render(tmp_path):
     p = display(tmp_path, """
-from llmbyt import scene as sc
+from muntin import scene as sc
 def render():
     return sc.Text("hi")
 """)
@@ -26,7 +26,7 @@ def render():
 
 def test_a_scene_node_is_rendered_through_the_scene_engine(tmp_path):
     p = display(tmp_path, """
-from llmbyt import scene as sc
+from muntin import scene as sc
 def render():
     return sc.Marquee(sc.Column([sc.Text("x") for _ in range(8)]), hold=2)
 """)

@@ -1,9 +1,9 @@
 """The raw escape hatch: return frames, draw whatever you like.
 
 Nothing here uses the scene engine -- render() hands back a list of
-images and llmbyt encodes them as-is.
+images and muntin encodes them as-is.
 """
-from llmbyt import canvas as cv
+from muntin import canvas as cv
 
 FRAMES = 60
 

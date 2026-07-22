@@ -1,6 +1,6 @@
 """A label, a current value, and a trend line under both."""
-from llmbyt import canvas as cv
-from llmbyt import scene as sc
+from muntin import canvas as cv
+from muntin import scene as sc
 
 SERIES = [3, 5, 4, 8, 6, 9, 12, 11, 14, 13, 17, 16, 20, 19, 22]
 

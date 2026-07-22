@@ -1,6 +1,6 @@
 """Text too long for one screen: hold, then scroll."""
-from llmbyt import canvas as cv
-from llmbyt import scene as sc
+from muntin import canvas as cv
+from muntin import scene as sc
 
 WORDS = ("the build is green and every test passed on the first try "
          "which has never once happened before")

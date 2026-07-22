@@ -2,8 +2,8 @@ import pathlib
 
 import pytest
 
-from llmbyt import canvas as cv
-from llmbyt import runner
+from muntin import canvas as cv
+from muntin import runner
 
 EXAMPLES = sorted((pathlib.Path(__file__).parent.parent / "examples")
                   .glob("*.py"))

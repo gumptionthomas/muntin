@@ -9,13 +9,13 @@ import io
 from dataclasses import dataclass
 
 from .canvas import check_frame_sizes
-from .errors import LlmbytError
+from .errors import MuntinError
 
 MAX_MS = 14500
 FRAME_MS_DEFAULT = 100
 
 
-class EncodeError(LlmbytError):
+class EncodeError(MuntinError):
     pass
 
 
@@ -78,7 +78,7 @@ def budget(n_frames: int, frame_ms: int = FRAME_MS_DEFAULT) -> Budget:
 
 def take(produce, requested: int, frame_ms: int = FRAME_MS_DEFAULT
          ) -> tuple[list, Budget]:
-    """THE ONLY PLACE IN llmbyt THAT CLAMPS A FRAME COUNT.
+    """THE ONLY PLACE IN muntin THAT CLAMPS A FRAME COUNT.
 
     Three layers used to clamp independently -- scene.render_scene,
     runner.normalize, and to_webp below -- and only the last one built a

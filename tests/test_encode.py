@@ -3,7 +3,7 @@ import io
 import pytest
 from PIL import Image
 
-from llmbyt import encode
+from muntin import encode
 
 
 def frames(n, size=(64, 32)):

@@ -10,9 +10,9 @@ screen seen from a foot away.
 **Never `show` without `preview`, and never `preview` without opening the
 image.**
 
-    llmbyt preview thing.py      # writes out.png or out.gif
+    muntin preview thing.py      # writes out.png or out.gif
     # open it. look at it.
-    llmbyt show thing.py
+    muntin show thing.py
 
 An agent that skips the middle step will report that a display looks good
 without having any way to know. The preview is upscaled 8x with a pixel
@@ -40,7 +40,7 @@ that range -- accented letters, curly quotes, em dashes, box drawing,
 emoji -- renders as an empty cell of the same width, with no warning and
 exit 0:
 
-    llmbyt text "héllo — wörld ☃"     # shows: h llo  w rld
+    muntin text "héllo — wörld ☃"     # shows: h llo  w rld
 
 Spell it in ASCII (`hello - world`), or draw the glyph yourself with
 `canvas.pixel`.
@@ -60,7 +60,7 @@ pixel of margin fixes it.
 
 ## Colour
 
-Use the named constants in `llmbyt.canvas`. They are chosen to survive the
+Use the named constants in `muntin.canvas`. They are chosen to survive the
 panel:
 
     BLACK WHITE DIM RED GREEN BLUE YELLOW ORANGE CYAN MAGENTA
@@ -79,7 +79,7 @@ fewer lit pixels, not dimmer ones.
 ## Animation
 
 **The ceiling is 14500ms and the device does not warn you.** Past roughly
-15 seconds the Tidbyt simply stops rendering, with nothing to see. llmbyt
+15 seconds the Tidbyt simply stops rendering, with nothing to see. muntin
 clamps and tells you exactly how many frames it dropped -- on `preview`
 as well as `show`, so you find out before you push. If you see that
 message, shorten the animation or lower `frame_ms`.

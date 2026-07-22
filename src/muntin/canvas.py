@@ -46,7 +46,7 @@ def check_frame_sizes(frames, error):
             raise error(
                 f"frame {i} is {f.width}x{f.height}, but the display is "
                 f"{W}x{H}. Every frame must be exactly {W}x{H} -- build "
-                f"frames on a llmbyt.canvas.Canvas, or resize or crop each "
+                f"frames on a muntin.canvas.Canvas, or resize or crop each "
                 f"frame to {W}x{H} before passing it on."
             )
 

@@ -1,7 +1,7 @@
 import pytest
 
-from llmbyt import canvas as cv
-from llmbyt import scene as sc
+from muntin import canvas as cv
+from muntin import scene as sc
 
 
 def test_a_static_scene_renders_exactly_one_frame():

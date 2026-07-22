@@ -9,13 +9,13 @@ characters share one baseline and grid.
 """
 import os
 
-from .errors import LlmbytError
+from .errors import MuntinError
 
 FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
 DEFAULT = "tom-thumb"
 
 
-class FontError(LlmbytError):
+class FontError(MuntinError):
     pass
 
 

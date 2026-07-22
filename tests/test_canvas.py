@@ -1,7 +1,7 @@
 import pytest
 from PIL import Image
 
-from llmbyt import canvas as cv
+from muntin import canvas as cv
 
 
 def test_default_canvas_is_the_display_size_and_black():
@@ -58,7 +58,7 @@ def test_text_returns_width_and_paints_ink():
 
 
 def test_text_accepts_a_font_by_name_or_object():
-    from llmbyt import font
+    from muntin import font
     c = cv.Canvas()
     assert c.text((0, 0), "hi", font="spleen-5x8") == 10
     assert c.text((0, 10), "hi", font=font.load("spleen-5x8")) == 10

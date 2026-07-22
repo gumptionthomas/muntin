@@ -1,10 +1,10 @@
 import pytest
 
-from llmbyt import cli
+from muntin import cli
 
 
 def display(tmp_path, body="""
-from llmbyt import scene as sc
+from muntin import scene as sc
 def render():
     return sc.Text("hi")
 """):
@@ -101,7 +101,7 @@ def test_text_with_a_single_overlong_word_still_succeeds(tmp_path, no_network):
 
 
 def test_text_with_a_single_overlong_word_shows_every_character(tmp_path):
-    from llmbyt import font as _font
+    from muntin import font as _font
     word = "a" * 28
     # Walk the produced scene tree and collect every Text node's string,
     # in the order they'd be displayed, to verify no character is lost.
@@ -194,7 +194,7 @@ def test_preview_reports_the_clamp_too_without_ever_pushing(tmp_path,
 
 
 def test_over_budget_text_reports_the_clamp(tmp_path, no_network, capsys):
-    """`llmbyt text` loses the tail of the user's own message the same
+    """`muntin text` loses the tail of the user's own message the same
     way a display does, and must say so."""
     long = " ".join(["word"] * 400)
     assert cli.main(["text", long, "-o", str(tmp_path / "o")]) == 0
@@ -219,12 +219,12 @@ def test_frame_ms_alone_over_the_ceiling_reports_that_distinct_failure(
 def test_missing_config_on_show_is_a_clean_error(tmp_path, monkeypatch,
                                                  capsys):
     def missing(**kw):
-        raise cli.device.ConfigError("Missing api_token. Run `llmbyt init`.")
+        raise cli.device.ConfigError("Missing api_token. Run `muntin init`.")
 
     monkeypatch.setattr(cli.device, "load_config", missing)
     assert cli.main(["show", str(display(tmp_path)),
                      "-o", str(tmp_path / "o")]) == 1
-    assert "llmbyt init" in capsys.readouterr().err
+    assert "muntin init" in capsys.readouterr().err
 
 
 def test_init_writes_the_config_from_prompts(tmp_path, monkeypatch, capsys):
@@ -294,7 +294,7 @@ def test_a_failed_render_removes_the_previous_preview(tmp_path, capsys):
     thought it just fixed."""
     out = tmp_path / "o.png"
     good = display(tmp_path, """
-from llmbyt import scene as sc
+from muntin import scene as sc
 def render():
     return sc.Text("hi")
 """)
@@ -302,7 +302,7 @@ def render():
     assert out.exists()
 
     bad = display(tmp_path, """
-from llmbyt import scene as sc
+from muntin import scene as sc
 def render():
     return sc.Text("x" * 40)
 """)
@@ -326,7 +326,7 @@ def render():
     assert (tmp_path / "o.gif").exists()
 
     static = display(tmp_path, """
-from llmbyt import scene as sc
+from muntin import scene as sc
 def render():
     return sc.Text("hi")
 """)
@@ -339,12 +339,12 @@ def render():
 def test_o_pointing_at_the_display_file_itself_survives_a_failed_render(
         tmp_path, capsys):
     """Regression: clear(args.out) used to unlink args.out unconditionally,
-    including a .py file -- so `llmbyt preview clock.py -o clock.py` wiped
+    including a .py file -- so `muntin preview clock.py -o clock.py` wiped
     the display's own source before frames_from() ever got to read it,
-    and reported "No such display" for a file that existed until llmbyt
+    and reported "No such display" for a file that existed until muntin
     deleted it."""
     src = display(tmp_path, """
-from llmbyt import scene as sc
+from muntin import scene as sc
 def render():
     return sc.Text("x" * 40)   # too wide -- Marquee-triggering failure
 """)
@@ -376,7 +376,7 @@ def test_o_pointing_at_the_display_file_itself_survives_a_successful_render(
 
 
 def test_default_o_never_deletes_an_unrelated_file_named_out(tmp_path):
-    """Regression: the documented default invocation (`llmbyt preview
+    """Regression: the documented default invocation (`muntin preview
     d.py`, -o defaulting to the bare stem "out") used to delete a plain
     file literally named "out" sitting in the working directory, silently
     and with exit 0. candidates() must never include the bare stem."""
@@ -420,7 +420,7 @@ def test_image_is_centred_not_flush_to_the_top_edge(tmp_path, no_network):
     out = tmp_path / "o.png"
     assert cli.main(["image", str(src), "-o", str(out)]) == 0
 
-    from llmbyt import scene as sc
+    from muntin import scene as sc
     frames, _ = sc.render_scene(
         sc.Column([sc.Sprite(str(src), fit="contain")],
                   justify="center", align="center"))

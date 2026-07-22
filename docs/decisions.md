@@ -17,7 +17,7 @@ more control.
 
 **Every push is an ephemeral interrupt.** `background: false` against a fixed
 `installationID`, so a frame appears immediately and the device then resumes its own app
-rotation. `llmbyt` never creates, deletes, or reorders anyone else's installations. That
+rotation. `muntin` never creates, deletes, or reorders anyone else's installations. That
 single constraint removes an entire category of device-state management and makes the
 tool safe to point at a display other apps already own. Rotation management is not a
 missing feature — it is out of scope on purpose.
@@ -93,14 +93,14 @@ succeed and every later run would fail to read it. `ensure_ascii=False` is requi
 
 ## Errors
 
-Every error derives from `errors.LlmbytError` and names **the constraint, the measured
+Every error derives from `errors.MuntinError` and names **the constraint, the measured
 violation, and the fix**. An error that describes a problem without saying what to do
 about it does not meet the bar. This matters more than usual here: for an agent running in
 a harness with nothing else loaded, the error message is the only teaching surface that
 arrives at the moment it is needed.
 
-`cli.main` catches `LlmbytError` and prints it without a traceback — the message is the
-interface. Anything else keeps its traceback, because anything else is a bug in `llmbyt`.
+`cli.main` catches `MuntinError` and prints it without a traceback — the message is the
+interface. Anything else keeps its traceback, because anything else is a bug in `muntin`.
 Do not broaden that `except`.
 
 ## Deletion

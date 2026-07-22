@@ -1,11 +1,11 @@
-# llmbyt, for agents
+# muntin, for agents
 
 A 64x32 LED display you can put anything on.
 
 ## The loop
 
-    llmbyt preview thing.py    # writes out.png / out.gif -- OPEN IT AND LOOK
-    llmbyt show thing.py       # push it to the device
+    muntin preview thing.py    # writes out.png / out.gif -- OPEN IT AND LOOK
+    muntin show thing.py       # push it to the device
 
 Never `show` without previewing and actually looking at the image first.
 You cannot see the device; the preview is the only way you know what you
@@ -18,13 +18,13 @@ made.
 | Display | 64 x 32 RGB |
 | Chars per line | 16 (`tom-thumb` 4x6), 12 (`spleen-5x8` 5x8) |
 | Animation cap | 14500ms total (145 frames at the 100ms default) |
-| Colour | use `llmbyt.canvas` constants; pure blue reads as black |
+| Colour | use `muntin.canvas` constants; pure blue reads as black |
 
 ## A display
 
 A Python file exposing `render()`, returning one of:
 
-    from llmbyt import scene as sc
+    from muntin import scene as sc
     def render():
         return sc.Column([sc.Text("hello")], justify="center")   # Scene node
 

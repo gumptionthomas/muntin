@@ -1,8 +1,8 @@
 """Time and date, centred. The plainest useful display."""
 import datetime
 
-from llmbyt import canvas as cv
-from llmbyt import scene as sc
+from muntin import canvas as cv
+from muntin import scene as sc
 
 
 def render():

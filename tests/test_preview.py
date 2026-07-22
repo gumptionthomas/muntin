@@ -1,8 +1,8 @@
 import pytest
 from PIL import Image
 
-from llmbyt import canvas as cv
-from llmbyt import preview
+from muntin import canvas as cv
+from muntin import preview
 
 
 def frames(n):
@@ -130,7 +130,7 @@ def test_foreign_output_suffix_is_a_named_preview_error(tmp_path):
 # actual behaviour exactly -- write() only ever touches the literal path
 # when that path already ends in .png or .gif; a bare stem or a foreign
 # suffix are never written to literally. Anything wider than that is a
-# data-loss bug: clear() unlinking a file llmbyt never authored.
+# data-loss bug: clear() unlinking a file muntin never authored.
 
 def test_candidates_for_a_png_path_is_just_that_path(tmp_path):
     p = tmp_path / "o.png"
@@ -158,14 +158,14 @@ def test_candidates_for_a_bare_stem_is_only_the_two_image_variants(tmp_path):
 
 def test_clear_never_deletes_a_file_with_a_foreign_suffix(tmp_path):
     src = tmp_path / "clock.py"
-    src.write_text("# the user's source, not an llmbyt artifact\n")
+    src.write_text("# the user's source, not an muntin artifact\n")
     preview.clear(src)
     assert src.exists()
-    assert src.read_text() == "# the user's source, not an llmbyt artifact\n"
+    assert src.read_text() == "# the user's source, not an muntin artifact\n"
 
 
 def test_clear_never_deletes_a_suffixless_file_matching_the_stem(tmp_path):
-    """The documented default invocation (`llmbyt preview d.py`, -o
+    """The documented default invocation (`muntin preview d.py`, -o
     defaulting to "out") must not destroy a plain file named "out"."""
     out = tmp_path / "out"
     out.write_text("the user's data, not a preview\n")

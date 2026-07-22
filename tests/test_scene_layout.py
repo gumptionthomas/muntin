@@ -1,7 +1,7 @@
 import pytest
 
-from llmbyt import canvas as cv
-from llmbyt import scene as sc
+from muntin import canvas as cv
+from muntin import scene as sc
 
 
 def lit(canvas):

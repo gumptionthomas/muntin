@@ -17,12 +17,12 @@ from PIL import Image
 from . import encode as _encode
 from . import font as _font
 from .canvas import GREEN, H, W, Canvas, WHITE
-from .errors import LlmbytError
+from .errors import MuntinError
 
 ALIGNMENTS = ("start", "center", "end")
 
 
-class SceneError(LlmbytError):
+class SceneError(MuntinError):
     pass
 
 
@@ -277,7 +277,7 @@ class Sprite(Node):
                 # corrupt/truncated files (OSError subclasses), decompression
                 # bombs (PIL.Image.DecompressionBombError, not an OSError),
                 # memory issues, and permission errors. The try block
-                # contains only pure PIL operations with no llmbyt logic,
+                # contains only pure PIL operations with no muntin logic,
                 # so a broad catch is safe and future-proof.
                 raise SceneError(
                     f"{path} exists but is not a readable image ({e}). "

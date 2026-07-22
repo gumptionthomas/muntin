@@ -3,7 +3,7 @@
 Every push is an ephemeral interrupt: background=false against a fixed
 installationID, so the frame shows immediately, the device then resumes
 its own rotation, and repeated pushes overwrite one slot rather than
-accumulating installations. llmbyt never creates, deletes, or reorders
+accumulating installations. muntin never creates, deletes, or reorders
 anyone else's apps.
 
 The API token is never printed. Config.redact() scrubs it from any string,
@@ -18,21 +18,21 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-from .errors import LlmbytError
+from .errors import MuntinError
 
 PUSH_URL = "https://api.tidbyt.com/v0/devices/%s/push"
-INSTALLATION_ID = "llmbyt"
+INSTALLATION_ID = "muntin"
 CONFIG_PATH = pathlib.Path(
     os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config")
-) / "llmbyt" / "config.toml"
+) / "muntin" / "config.toml"
 TIMEOUT = 15
 
 
-class ConfigError(LlmbytError):
+class ConfigError(MuntinError):
     pass
 
 
-class PushError(LlmbytError):
+class PushError(MuntinError):
     pass
 
 
@@ -71,22 +71,22 @@ def load_config(env=None, path=None) -> Config:
             read_error = getattr(e, "strerror", None) or type(e).__name__
         if read_error is not None:
             raise ConfigError(
-                f"Cannot read the llmbyt config at {path} ({read_error}). "
+                f"Cannot read the muntin config at {path} ({read_error}). "
                 f"It must be readable TOML with device_id and api_token. "
-                f"Re-run `llmbyt init` to write a fresh one, or fix the "
-                f"file by hand -- or set LLMBYT_DEVICE_ID and "
-                f"LLMBYT_API_TOKEN in the environment instead."
+                f"Re-run `muntin init` to write a fresh one, or fix the "
+                f"file by hand -- or set MUNTIN_DEVICE_ID and "
+                f"MUNTIN_API_TOKEN in the environment instead."
             )
 
-    device_id = env.get("LLMBYT_DEVICE_ID") or values.get("device_id")
-    api_token = env.get("LLMBYT_API_TOKEN") or values.get("api_token")
+    device_id = env.get("MUNTIN_DEVICE_ID") or values.get("device_id")
+    api_token = env.get("MUNTIN_API_TOKEN") or values.get("api_token")
 
     missing = [n for n, v in (("device_id", device_id),
                               ("api_token", api_token)) if not v]
     if missing:
         raise ConfigError(
-            f"Missing {' and '.join(missing)}. Run `llmbyt init` to write "
-            f"{path}, or set LLMBYT_DEVICE_ID and LLMBYT_API_TOKEN in the "
+            f"Missing {' and '.join(missing)}. Run `muntin init` to write "
+            f"{path}, or set MUNTIN_DEVICE_ID and MUNTIN_API_TOKEN in the "
             f"environment. Get both from https://tidbyt.dev/ -- the device "
             f"ID and API key are in the Tidbyt mobile app under "
             f"Settings > General > Get API Key."
@@ -139,11 +139,11 @@ def _post(url, body, headers) -> int:
 
 
 _HINTS = {
-    401: "the API token was rejected. Check it, or re-run `llmbyt init`.",
+    401: "the API token was rejected. Check it, or re-run `muntin init`.",
     403: ("the API token is not permitted to push to this device. Generate "
           "a new token for this device in the Tidbyt app, then re-run "
-          "`llmbyt init`."),
-    404: "no such device. Check the device ID, or re-run `llmbyt init`.",
+          "`muntin init`."),
+    404: "no such device. Check the device ID, or re-run `muntin init`.",
 }
 
 _GENERIC_STATUS_HINT = (

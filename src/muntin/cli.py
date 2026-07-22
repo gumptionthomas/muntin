@@ -11,7 +11,7 @@ import sys
 from . import canvas as cv
 from . import device, encode, preview, runner
 from . import scene as sc
-from .errors import LlmbytError
+from .errors import MuntinError
 
 EPILOG = f"""\
 The display is {cv.W}x{cv.H} pixels. Animations are capped at
@@ -25,15 +25,15 @@ A display is a Python file exposing render(), which returns one of:
 
 Always `preview` and look at the image before you `show`.
 
-  llmbyt preview clock.py      # render to a file, no network
-  llmbyt show clock.py         # render, look, then push to the device
-  llmbyt text "back in 5"      # one-shot message
+  muntin preview clock.py      # render to a file, no network
+  muntin show clock.py         # render, look, then push to the device
+  muntin text "back in 5"      # one-shot message
 """
 
 
 def build_parser():
     p = argparse.ArgumentParser(
-        prog="llmbyt",
+        prog="muntin",
         description="Put pixels on a Tidbyt.",
         epilog=EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -75,7 +75,7 @@ def main(argv=None) -> int:
         return 2
     try:
         return _dispatch(args)
-    except LlmbytError as e:
+    except MuntinError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
 
@@ -176,7 +176,7 @@ def _init() -> int:
     if missing:
         raise device.ConfigError(
             f"Missing {' and '.join(missing)}. Both a device ID and an "
-            f"API token are required -- re-run `llmbyt init` and paste "
+            f"API token are required -- re-run `muntin init` and paste "
             f"both values from the Tidbyt app (Settings > General > Get "
             f"API Key). Nothing was written."
         )

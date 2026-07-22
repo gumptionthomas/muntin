@@ -1,11 +1,11 @@
-# llmbyt — design
+# muntin — design
 
 **Date:** 2026-07-21
 **Status:** approved (design), pending implementation plan
 
 ## What this is
 
-`llmbyt` gives a coding agent a 64×32 LED display. It turns intent into pixels on a
+`muntin` gives a coding agent a 64×32 LED display. It turns intent into pixels on a
 Tidbyt and closes the loop the agent needs to do that well: **render → look at it →
 fix it → show it.**
 
@@ -19,7 +19,7 @@ display exists and choose to use it — not wait to be told.
 
 | Decision | Choice |
 |---|---|
-| Distribution | New public repo + PyPI package, `llmbyt` (name verified free 2026-07-21) |
+| Distribution | New public repo + PyPI package, `muntin` (name verified free 2026-07-21) |
 | Language | Python ≥3.11, `uv`, Pillow as the only runtime dependency |
 | Display model | Ephemeral interrupt — show now, device resumes its own rotation |
 | Render core | Layered: declarative scene DSL + raw frame escape hatch |
@@ -34,10 +34,10 @@ Every push uses `background: false` against
 `POST https://api.tidbyt.com/v0/devices/{id}/push`. The frame appears immediately and
 the device then resumes its normal app rotation.
 
-Pushes carry a stable `installationID` of `llmbyt`, so repeated pushes overwrite one
+Pushes carry a stable `installationID` of `muntin`, so repeated pushes overwrite one
 slot rather than accumulating installations on the device.
 
-`llmbyt` never creates, deletes, or reorders anyone else's installations. That single
+`muntin` never creates, deletes, or reorders anyone else's installations. That single
 constraint removes an entire category of device-state management, and makes the tool
 safe to run against a display that other apps already own.
 
@@ -155,7 +155,7 @@ deliberate act.
 
 ## Error posture
 
-`llmbyt` is loud. Errors surface with full context and never fall back to a stale
+`muntin` is loud. Errors surface with full context and never fall back to a stale
 artifact — an agent iterating against a stale PNG cannot tell that it is.
 
 This is a deliberate inversion of `familiar`, which swallows every error by design so a
@@ -175,11 +175,11 @@ loaded, and it arrives exactly when it is needed.
 ## CLI
 
 ```
-llmbyt init                    walk through device ID + token, write config
-llmbyt preview <display.py>    render to out.gif/png; never touches the network
-llmbyt show <display.py>       preview, then push
-llmbyt text "..."              one-shot: type something, see it now
-llmbyt image <path>            one-shot: fit + dither a real image down to 64x32
+muntin init                    walk through device ID + token, write config
+muntin preview <display.py>    render to out.gif/png; never touches the network
+muntin show <display.py>       preview, then push
+muntin text "..."              one-shot: type something, see it now
+muntin image <path>            one-shot: fit + dither a real image down to 64x32
 ```
 
 `--help` is a teaching surface and is written as one: it states the display size, the
@@ -187,14 +187,14 @@ duration cap, and the three accepted `render()` return types.
 
 ## Configuration
 
-`~/.config/llmbyt/config.toml`:
+`~/.config/muntin/config.toml`:
 
 ```toml
 device_id = "..."
 api_token = "..."
 ```
 
-Environment overrides `LLMBYT_DEVICE_ID` and `LLMBYT_API_TOKEN` take precedence, for CI
+Environment overrides `MUNTIN_DEVICE_ID` and `MUNTIN_API_TOKEN` take precedence, for CI
 and for keeping the token out of the filesystem.
 
 The token is redacted everywhere it could be printed — including in error output and
@@ -202,13 +202,13 @@ tracebacks, which is where credentials actually leak.
 
 ## Discovery
 
-An invoked tool is not an available one. `llmbyt` is meant to be something an agent can
+An invoked tool is not an available one. `muntin` is meant to be something an agent can
 choose, so discovery is a standing invitation rather than a command.
 
 The README ships a one-line addition for a user's global agent config — `~/.claude/CLAUDE.md`,
 `AGENTS.md`, or the harness equivalent — to the effect of:
 
-> There is a Tidbyt on the desk. Run `llmbyt --help`. Use it when it would be genuinely
+> There is a Tidbyt on the desk. Run `muntin --help`. Use it when it would be genuinely
 > nice; you do not need to ask first.
 
 That grants standing permission without a slash command, and works in any harness that

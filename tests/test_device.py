@@ -4,7 +4,7 @@ import stat
 
 import pytest
 
-from llmbyt import device
+from muntin import device
 
 
 def cfg(token="secret-token-value"):
@@ -26,8 +26,8 @@ class Poster:
 # --- config ----------------------------------------------------------
 
 def test_env_supplies_the_whole_config():
-    c = device.load_config(env={"LLMBYT_DEVICE_ID": "d",
-                                "LLMBYT_API_TOKEN": "t"})
+    c = device.load_config(env={"MUNTIN_DEVICE_ID": "d",
+                                "MUNTIN_API_TOKEN": "t"})
     assert (c.device_id, c.api_token) == ("d", "t")
 
 
@@ -41,7 +41,7 @@ def test_config_file_is_read_when_env_is_absent(tmp_path):
 def test_env_overrides_the_file(tmp_path):
     p = tmp_path / "config.toml"
     p.write_text('device_id = "from-file"\napi_token = "tok"\n')
-    c = device.load_config(env={"LLMBYT_DEVICE_ID": "from-env"}, path=p)
+    c = device.load_config(env={"MUNTIN_DEVICE_ID": "from-env"}, path=p)
     assert c.device_id == "from-env"
     assert c.api_token == "tok"
 
@@ -50,13 +50,13 @@ def test_missing_config_tells_you_how_to_fix_it(tmp_path):
     with pytest.raises(device.ConfigError) as e:
         device.load_config(env={}, path=tmp_path / "nope.toml")
     msg = str(e.value)
-    assert "llmbyt init" in msg
-    assert "LLMBYT_API_TOKEN" in msg
+    assert "muntin init" in msg
+    assert "MUNTIN_API_TOKEN" in msg
 
 
 def test_partial_config_names_only_the_missing_key(tmp_path):
     with pytest.raises(device.ConfigError) as e:
-        device.load_config(env={"LLMBYT_DEVICE_ID": "d"},
+        device.load_config(env={"MUNTIN_DEVICE_ID": "d"},
                            path=tmp_path / "nope.toml")
     assert "api_token" in str(e.value)
     assert "device_id" not in str(e.value)
@@ -221,7 +221,7 @@ def test_a_403_names_a_concrete_fix():
         device.push(b"w", cfg(), poster=Poster(403))
     msg = str(e.value).lower()
     assert "403" in str(e.value)
-    assert "llmbyt init" in msg or "new token" in msg or "regenerate" in msg
+    assert "muntin init" in msg or "new token" in msg or "regenerate" in msg
 
 
 # --- Finding 4: no unredacted token reachable via __context__/__cause__ ---
@@ -251,7 +251,7 @@ def test_a_malformed_config_is_a_clean_error_naming_the_path_and_the_fix(
         device.load_config(env={}, path=p)
     msg = str(e.value)
     assert str(p) in msg
-    assert "llmbyt init" in msg
+    assert "muntin init" in msg
 
 
 def test_a_malformed_config_leaves_no_token_bearing_exception_reachable(
@@ -275,17 +275,17 @@ def test_a_malformed_config_leaves_no_token_bearing_exception_reachable(
 
 def test_a_malformed_config_does_not_escape_the_cli_as_a_traceback(
         tmp_path, monkeypatch, capsys):
-    from llmbyt import cli
+    from muntin import cli
     p = tmp_path / "config.toml"
     p.write_text(MALFORMED)
     monkeypatch.setattr(device, "CONFIG_PATH", p)
-    monkeypatch.delenv("LLMBYT_DEVICE_ID", raising=False)
-    monkeypatch.delenv("LLMBYT_API_TOKEN", raising=False)
+    monkeypatch.delenv("MUNTIN_DEVICE_ID", raising=False)
+    monkeypatch.delenv("MUNTIN_API_TOKEN", raising=False)
     assert cli.main(["text", "hi", "-o", str(tmp_path / "o")]) == 1
     err = capsys.readouterr().err
     assert "Traceback" not in err
     assert "secret-token-value" not in err
-    assert "llmbyt init" in err
+    assert "muntin init" in err
 
 
 def test_an_unreadable_config_is_a_clean_error_too(tmp_path):
@@ -301,5 +301,5 @@ def test_an_unreadable_config_is_a_clean_error_too(tmp_path):
     finally:
         p.chmod(0o600)
     msg = str(e.value)
-    assert str(p) in msg and "llmbyt init" in msg
+    assert str(p) in msg and "muntin init" in msg
     assert e.value.__context__ is None

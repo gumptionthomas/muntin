@@ -1,29 +1,33 @@
-# llmbyt
+# muntin
 
 Give a coding agent a 64x32 LED display.
 
-`llmbyt` renders frames and pushes them to a [Tidbyt](https://tidbyt.com),
+`muntin` renders frames and pushes them to a [Tidbyt](https://tidbyt.com),
 with a preview loop an agent can close by itself: render, look at the
 image, fix it, show it.
 
 It works with any harness that can run a shell command.
 
+*A muntin is the slender bar that divides a window into panes — the thing
+that turns a sheet of glass into a grid of lit rectangles. Which is also a
+reasonable description of a 64x32 LED matrix.*
+
 ## Install
 
-    uv tool install llmbyt
-    llmbyt init          # device ID + API token, from the Tidbyt app
+    uv tool install muntin
+    muntin init          # device ID + API token, from the Tidbyt app
 
 ## Use
 
-    llmbyt text "back in 5"
-    llmbyt image photo.jpg
-    llmbyt preview examples/clock.py     # render to a file, no network
-    llmbyt show examples/clock.py        # render, then push
+    muntin text "back in 5"
+    muntin image photo.jpg
+    muntin preview examples/clock.py     # render to a file, no network
+    muntin show examples/clock.py        # render, then push
 
 A display is a Python file exposing `render()`:
 
 ```python
-from llmbyt import scene as sc
+from muntin import scene as sc
 
 def render():
     return sc.Column([
@@ -39,11 +43,11 @@ control.
 
 ## Giving an agent the display
 
-`llmbyt` is meant to be something an agent *chooses* to use, not something
+`muntin` is meant to be something an agent *chooses* to use, not something
 you invoke on its behalf. Add one line to your global agent config —
 `~/.claude/CLAUDE.md`, `AGENTS.md`, or your harness's equivalent:
 
-> There is a Tidbyt on the desk. Run `llmbyt --help`. Use it when it would
+> There is a Tidbyt on the desk. Run `muntin --help`. Use it when it would
 > be genuinely nice — a build finishing, something worth noticing, or just
 > because. You do not need to ask first.
 
@@ -52,7 +56,7 @@ That grants standing permission without a command to remember.
 ## What it does not do
 
 Every push is an **ephemeral interrupt**: the frame appears immediately,
-then your device resumes its normal app rotation. `llmbyt` never creates,
+then your device resumes its normal app rotation. `muntin` never creates,
 deletes, or reorders your installed apps. It is safe to point at a display
 that other apps already own.
 

@@ -10,14 +10,14 @@ import pathlib
 from PIL import Image, ImageDraw
 
 from .canvas import check_frame_sizes
-from .errors import LlmbytError
+from .errors import MuntinError
 
 DEFAULT_SCALE = 8
 GRID = (40, 40, 40)
 BEZEL = (70, 70, 70)
 
 
-class PreviewError(LlmbytError):
+class PreviewError(MuntinError):
     pass
 
 
@@ -81,7 +81,7 @@ def clear(path):
         target, reason = failed
         raise PreviewError(
             f"Cannot remove the previous preview at {target} ({reason}). "
-            f"llmbyt clears the old artifact before rendering so a failed "
+            f"muntin clears the old artifact before rendering so a failed "
             f"render can never leave a stale image behind. Delete it by "
             f"hand, or pass a different -o path."
         )
@@ -112,10 +112,10 @@ def write(frames, path, scale=DEFAULT_SCALE, grid=True, frame_ms=100):
     path = pathlib.Path(path)
     if path.suffix and path.suffix.lower() not in (".png", ".gif"):
         raise PreviewError(
-            f"Unknown output extension {path.suffix!r} for {path}. llmbyt "
+            f"Unknown output extension {path.suffix!r} for {path}. muntin "
             f"only writes .png (static) or .gif (animated). Pass -o with "
             f"one of those extensions, or no extension at all and let "
-            f"llmbyt pick .png/.gif from the frame count."
+            f"muntin pick .png/.gif from the frame count."
         )
     if not path.suffix:
         try:

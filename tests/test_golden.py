@@ -17,10 +17,10 @@ from PIL import Image
 
 from golden import assert_golden
 
-from llmbyt import canvas as cv
-from llmbyt import font as _font
-from llmbyt import preview
-from llmbyt import scene as sc
+from muntin import canvas as cv
+from muntin import font as _font
+from muntin import preview
+from muntin import scene as sc
 
 ASCII = "".join(chr(c) for c in range(32, 127))     # every glyph both fonts have
 PER_ROW = 16

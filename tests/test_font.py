@@ -1,7 +1,7 @@
 import pytest
 from PIL import Image, ImageDraw
 
-from llmbyt import font
+from muntin import font
 
 
 def test_available_lists_both_shipped_fonts():

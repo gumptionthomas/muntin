@@ -21,10 +21,10 @@ from PIL import Image
 from . import encode as _encode
 from . import scene as _scene
 from .canvas import check_frame_sizes
-from .errors import LlmbytError
+from .errors import MuntinError
 
 
-class DisplayError(LlmbytError):
+class DisplayError(MuntinError):
     pass
 
 
@@ -40,7 +40,7 @@ def load_display(path):
     # Unique module name per path, so two displays that share a basename
     # cannot overwrite each other in sys.modules.
     digest = hashlib.sha1(str(path.resolve()).encode()).hexdigest()[:8]
-    name = f"llmbyt_display_{digest}"
+    name = f"muntin_display_{digest}"
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         found = "a directory" if path.is_dir() else (path.suffix or "no extension")
