@@ -1,6 +1,25 @@
+import io
+
 import pytest
 
 from muntin import cli
+
+
+class _TtyStdin(io.StringIO):
+    """stdin that claims to be a terminal.
+
+    `init` refuses to prompt without one, and pytest's stdin is not a TTY,
+    so every test about the *prompting* path has to supply this -- without
+    it those tests pass on the refusal instead, never reaching the
+    behaviour they name."""
+
+    def isatty(self):
+        return True
+
+
+@pytest.fixture
+def tty(monkeypatch):
+    monkeypatch.setattr(cli.sys, "stdin", _TtyStdin())
 
 
 def display(tmp_path, body="""
@@ -227,7 +246,8 @@ def test_missing_config_on_show_is_a_clean_error(tmp_path, monkeypatch,
     assert "muntin init" in capsys.readouterr().err
 
 
-def test_init_writes_the_config_from_prompts(tmp_path, monkeypatch, capsys):
+def test_init_writes_the_config_from_prompts(tmp_path, monkeypatch, capsys,
+                                             tty):
     monkeypatch.setattr("builtins.input", lambda _: "dev-abc")
     monkeypatch.setattr(cli.getpass, "getpass", lambda _: "token-xyz")
     cfg_path = tmp_path / "config.toml"
@@ -237,7 +257,7 @@ def test_init_writes_the_config_from_prompts(tmp_path, monkeypatch, capsys):
     assert 'token-xyz' in cfg_path.read_text()
 
 
-def test_init_does_not_echo_the_token(tmp_path, monkeypatch, capsys):
+def test_init_does_not_echo_the_token(tmp_path, monkeypatch, capsys, tty):
     monkeypatch.setattr("builtins.input", lambda _: "dev-abc")
     monkeypatch.setattr(cli.getpass, "getpass", lambda _: "token-xyz")
     monkeypatch.setattr(cli.device, "CONFIG_PATH", tmp_path / "config.toml")
@@ -245,7 +265,8 @@ def test_init_does_not_echo_the_token(tmp_path, monkeypatch, capsys):
     assert "token-xyz" not in capsys.readouterr().out
 
 
-def test_init_reads_the_token_via_getpass_not_input(tmp_path, monkeypatch):
+def test_init_reads_the_token_via_getpass_not_input(tmp_path, monkeypatch,
+                                                    tty):
     """The 'init' prompt claims the token is hidden / not echoed back --
     that claim is only true if the token genuinely goes through
     getpass.getpass() rather than input(). input() echoes on a real
@@ -267,7 +288,7 @@ def test_init_reads_the_token_via_getpass_not_input(tmp_path, monkeypatch):
 
 
 def test_init_requires_both_values_and_writes_nothing(tmp_path, monkeypatch,
-                                                       capsys):
+                                                      capsys, tty):
     monkeypatch.setattr("builtins.input", lambda _: "")
     monkeypatch.setattr(cli.getpass, "getpass", lambda _: "")
     cfg_path = tmp_path / "config.toml"
@@ -275,8 +296,62 @@ def test_init_requires_both_values_and_writes_nothing(tmp_path, monkeypatch,
     assert cli.main(["init"]) == 1
     assert not cfg_path.exists()
     err = capsys.readouterr().err
+    # Both the no-terminal guard and the empty-answer path exit 1 writing
+    # nothing, and both name "device ID" -- so without this, dropping the
+    # `tty` fixture would leave the test green while it silently stopped
+    # reaching the empty-answer path at all. It did, before the fixture.
+    assert "MUNTIN_DEVICE_ID" not in err
     assert "device ID" in err
     assert "API token" in err
+
+
+def test_init_without_a_terminal_names_the_environment_variables(
+        tmp_path, monkeypatch, capsys):
+    """`init` prompts, so it needs a terminal to prompt on. Under an agent
+    harness, a pipe, or CI there is none, and input() used to escape as a
+    bare EOFError traceback -- which by main()'s contract claims "bug in
+    muntin" for what is really a usage problem with a fix. The fix is the
+    env-var path load_config() already supports, so the error has to name
+    it."""
+    monkeypatch.setattr(cli.sys, "stdin", io.StringIO(""))
+    cfg_path = tmp_path / "config.toml"
+    monkeypatch.setattr(cli.device, "CONFIG_PATH", cfg_path)
+
+    assert cli.main(["init"]) == 1
+    assert not cfg_path.exists()
+    err = capsys.readouterr().err
+    assert "MUNTIN_DEVICE_ID" in err and "MUNTIN_API_TOKEN" in err
+
+
+def test_init_without_a_terminal_does_not_prompt(tmp_path, monkeypatch):
+    """Bailing has to happen *before* the first prompt. Printing "Device
+    ID: " into a pipe and then failing is the confusing half-state this
+    replaces -- and a partial prompt is what the traceback looked like."""
+    monkeypatch.setattr(cli.sys, "stdin", io.StringIO(""))
+    monkeypatch.setattr(cli.device, "CONFIG_PATH", tmp_path / "config.toml")
+    called = []
+    monkeypatch.setattr("builtins.input",
+                        lambda p: called.append(p) or "dev-abc")
+    monkeypatch.setattr(cli.getpass, "getpass",
+                        lambda p: called.append(p) or "token-xyz")
+
+    assert cli.main(["init"]) == 1
+    assert called == []
+
+
+def test_init_with_stdin_closed_entirely_fails_cleanly(tmp_path, monkeypatch,
+                                                       capsys):
+    """A process started with stdin *closed* gets sys.stdin = None, not a
+    non-TTY file object. A bare `sys.stdin.isatty()` guard would raise
+    AttributeError there -- crashing in the code whose whole purpose is to
+    stop this command from crashing."""
+    monkeypatch.setattr(cli.sys, "stdin", None)
+    cfg_path = tmp_path / "config.toml"
+    monkeypatch.setattr(cli.device, "CONFIG_PATH", cfg_path)
+
+    assert cli.main(["init"]) == 1
+    assert not cfg_path.exists()
+    assert "MUNTIN_DEVICE_ID" in capsys.readouterr().err
 
 
 def test_scale_option_changes_the_preview_size(tmp_path):

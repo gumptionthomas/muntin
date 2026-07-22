@@ -163,6 +163,24 @@ def _render(frames, budget, args, push) -> int:
 
 
 def _init() -> int:
+    # `init` is the only command that prompts, so it is the only one that
+    # needs a terminal to prompt on -- and muntin's whole premise is being
+    # driven by an agent, which is precisely an environment without one.
+    # A pipe gave input() an EOFError and a closed stdin (sys.stdin is
+    # None) gave it "RuntimeError: lost sys.stdin"; both escaped as
+    # tracebacks, which main() reserves for bugs in muntin. This is a
+    # usage problem with a documented way out, so it says so. Checked
+    # before the first prompt: half a prompt written into a pipe and then
+    # a failure is worse than no prompt at all.
+    if sys.stdin is None or not sys.stdin.isatty():
+        raise device.ConfigError(
+            "`muntin init` prompts for a device ID and an API token, so it "
+            "needs an interactive terminal -- stdin here is not one. Run "
+            "`muntin init` in a terminal, or skip the prompts entirely by "
+            "setting MUNTIN_DEVICE_ID and MUNTIN_API_TOKEN in the "
+            "environment, which every other command reads too. Nothing "
+            "was written."
+        )
     print("Get both values from the Tidbyt mobile app: "
           "Settings > General > Get API Key.")
     device_id = input("Device ID: ").strip()
