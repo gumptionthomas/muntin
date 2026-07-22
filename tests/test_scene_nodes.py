@@ -57,6 +57,62 @@ def test_marquee_rejects_an_unknown_axis():
         sc.Marquee(sc.Text("x"), axis="z")
 
 
+def test_marquee_last_frame_reaches_full_travel_on_the_y_axis():
+    marker = cv.MAGENTA
+    img = Image.new("RGB", (10, 40), cv.BLACK)   # travel = 40 - 32 = 8
+    for x in range(10):
+        img.putpixel((x, 39), marker)            # mark the child's last row
+    m = sc.Marquee(sc.Sprite(img), axis="y", hold=2, speed=1)
+    c = cv.Canvas()
+    m.draw(c, (0, 0, cv.W, cv.H), m.frame_count() - 1)
+    # the child's last row must land exactly on the viewport's bottom edge
+    assert any(c.img.getpixel((x, cv.H - 1)) == marker for x in range(10))
+
+
+def test_marquee_last_frame_reaches_full_travel_on_the_x_axis():
+    marker = cv.MAGENTA
+    img = Image.new("RGB", (72, 10), cv.BLACK)   # travel = 72 - 64 = 8
+    for y in range(10):
+        img.putpixel((71, y), marker)            # mark the child's last column
+    m = sc.Marquee(sc.Sprite(img), axis="x", hold=2, speed=1)
+    c = cv.Canvas()
+    m.draw(c, (0, 0, cv.W, cv.H), m.frame_count() - 1)
+    # the child's last column must land exactly on the viewport's right edge
+    assert any(c.img.getpixel((cv.W - 1, y)) == marker for y in range(10))
+
+
+def test_marquee_static_frame_count_matches_hold_exactly():
+    child = sc.Column([sc.Text("x") for _ in range(10)])
+    hold = 4
+    m = sc.Marquee(child, axis="y", hold=hold)
+    base, before, at = cv.Canvas(), cv.Canvas(), cv.Canvas()
+    m.draw(base, (0, 0, cv.W, cv.H), 0)
+    m.draw(before, (0, 0, cv.W, cv.H), hold - 1)
+    m.draw(at, (0, 0, cv.W, cv.H), hold)
+    # frames [0, hold) are all static -- t=hold-1 must match t=0 exactly
+    assert before.img.tobytes() == base.img.tobytes()
+    # motion begins at t=hold -- it must differ from the static frame
+    assert at.img.tobytes() != base.img.tobytes()
+
+
+def test_marquee_speed_over_one_still_lands_exactly_on_full_travel():
+    marker = cv.MAGENTA
+    img = Image.new("RGB", (10, 45), cv.BLACK)   # travel = 45 - 32 = 13
+    for x in range(10):
+        img.putpixel((x, 44), marker)            # mark the child's last row
+    m = sc.Marquee(sc.Sprite(img), axis="y", hold=1, speed=4)
+    travel = 45 - cv.H
+    assert travel % m.speed != 0, "test needs a non-exact-multiple travel"
+    c = cv.Canvas()
+    m.draw(c, (0, 0, cv.W, cv.H), m.frame_count() - 1)
+    assert any(c.img.getpixel((x, cv.H - 1)) == marker for x in range(10))
+
+
+def test_marquee_rejects_a_negative_hold():
+    with pytest.raises(sc.SceneError, match="hold"):
+        sc.Marquee(sc.Text("x"), hold=-1)
+
+
 # --- Sprite ----------------------------------------------------------
 
 def test_sprite_measures_as_the_source_image():

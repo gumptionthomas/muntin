@@ -179,9 +179,16 @@ class Marquee(Node):
                 f"would mean the marquee never reaches the far edge. "
                 f"Pass an integer speed of 1 or greater."
             )
+        if hold < 0:
+            raise SceneError(
+                f"hold={hold!r} is not valid. hold must be >= 0 -- it is "
+                f"the number of static frames before scrolling starts, "
+                f"and a negative count is meaningless. Pass hold=0 or a "
+                f"positive integer."
+            )
         self.child = child
         self.axis = axis
-        self.hold = max(0, hold)
+        self.hold = hold
         self.speed = speed
 
     def _travel(self):
@@ -196,11 +203,12 @@ class Marquee(Node):
         travel = self._travel()
         if not travel:
             return max(1, self.hold)
-        return max(1, self.hold) + -(-travel // self.speed)
+        return self.hold + -(-travel // self.speed)
 
     def draw(self, canvas, box, t):
         x, y, _, _ = box
-        moved = max(0, t - self.hold) * self.speed
+        step = t - self.hold
+        moved = (step + 1) * self.speed if step >= 0 else 0
         off = min(moved, self._travel())
         cw, ch = self.child.measure()
         if self.axis == "x":
