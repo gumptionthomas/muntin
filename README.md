@@ -21,6 +21,7 @@ reasonable description of a 64x32 LED matrix.*
 
     muntin text "back in 5"
     muntin image photo.jpg
+    muntin image photo.jpg --no-push     # render it, look, don't send it
     muntin preview examples/clock.py     # render to a file, no network
     muntin show examples/clock.py        # render, then push
 

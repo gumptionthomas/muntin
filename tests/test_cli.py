@@ -354,6 +354,44 @@ def test_init_with_stdin_closed_entirely_fails_cleanly(tmp_path, monkeypatch,
     assert "MUNTIN_DEVICE_ID" in capsys.readouterr().err
 
 
+def test_text_with_no_push_writes_the_preview_and_never_pushes(tmp_path,
+                                                               no_network):
+    """AGENTS.md tells an agent never to put something on the device
+    without looking at it first, but the one-shot verbs pushed
+    unconditionally -- there was no way to look first. --no-push is that
+    way."""
+    assert cli.main(["text", "hello there", "--no-push",
+                     "-o", str(tmp_path / "o")]) == 0
+    assert (tmp_path / "o.png").exists()
+    assert no_network.calls == []
+
+
+def test_image_with_no_push_writes_the_preview_and_never_pushes(tmp_path,
+                                                                no_network):
+    """Doubly true for `image`: downscaling to 64x32 is where thin detail
+    silently disappears, so seeing the result before it lands on the glass
+    is the whole point."""
+    from PIL import Image
+    src = tmp_path / "src.png"
+    Image.new("RGB", (400, 300), (0, 200, 0)).save(src)
+    assert cli.main(["image", str(src), "--no-push",
+                     "-o", str(tmp_path / "o")]) == 0
+    assert (tmp_path / "o.png").exists()
+    assert no_network.calls == []
+
+
+def test_text_and_image_still_push_by_default(tmp_path, no_network):
+    """--no-push must be opt-in: the one-shot verbs exist to put something
+    on the device, and defaulting them to silence would be a far worse
+    bug than the one it fixes."""
+    from PIL import Image
+    src = tmp_path / "src.png"
+    Image.new("RGB", (40, 30), (0, 0, 200)).save(src)
+    assert cli.main(["text", "hi", "-o", str(tmp_path / "a")]) == 0
+    assert cli.main(["image", str(src), "-o", str(tmp_path / "b")]) == 0
+    assert len(no_network.calls) == 2
+
+
 def test_a_message_that_only_just_overflows_is_tightened_to_fit(tmp_path):
     """Five wrapped lines measure 34px with a 1px leading -- 2px over the
     display. A Marquee can only express 2px of travel as a crawl that

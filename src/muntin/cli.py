@@ -28,6 +28,10 @@ Always `preview` and look at the image before you `show`.
   muntin preview clock.py      # render to a file, no network
   muntin show clock.py         # render, look, then push to the device
   muntin text "back in 5"      # one-shot message
+  muntin image cat.jpg --no-push   # one-shot, but look before it lands
+
+`text` and `image` push as soon as they run; --no-push writes the preview
+and stops there.
 """
 
 
@@ -51,6 +55,17 @@ def build_parser():
                         help="omit the pixel grid in the preview")
         return sp
 
+    def with_no_push(sp):
+        # Only on the one-shot verbs. `preview` never pushes and `show`
+        # exists to, so --no-push there would just be a second spelling of
+        # `preview`. On `text` and `image` it is the only way to obey
+        # AGENTS.md's "look at it before it reaches the device" -- most of
+        # all for `image`, where the fit to 64x32 is what quietly loses
+        # thin detail.
+        sp.add_argument("--no-push", action="store_true",
+                        help="write the preview only; never touch the network")
+        return sp
+
     sub.add_parser("init", help="save your device ID and API token")
     with_output(sub.add_parser(
         "preview", help="render a display to a file; never touches the network")
@@ -58,11 +73,11 @@ def build_parser():
     with_output(sub.add_parser(
         "show", help="render a display, then push it to the device")
     ).add_argument("display", help="path to a Python file exposing render()")
-    with_output(sub.add_parser(
-        "text", help="show a one-shot message")
+    with_no_push(with_output(sub.add_parser(
+        "text", help="show a one-shot message"))
     ).add_argument("message")
-    with_output(sub.add_parser(
-        "image", help="fit an image to the display and show it")
+    with_no_push(with_output(sub.add_parser(
+        "image", help="fit an image to the display and show it"))
     ).add_argument("path")
     return p
 
@@ -98,7 +113,7 @@ def _dispatch(args) -> int:
     if args.cmd == "text":
         return _render(*sc.render_scene(_message(args.message),
                                         frame_ms=args.frame_ms),
-                       args=args, push=True)
+                       args=args, push=not args.no_push)
     if args.cmd == "image":
         node = sc.Sprite(args.path, fit="contain")
         # Column, not Stack: Stack hands its child the full box, so a
@@ -106,7 +121,7 @@ def _dispatch(args) -> int:
         # centred. A Column of one centres on both axes.
         return _render(*sc.render_scene(
             sc.Column([node], justify="center", align="center"),
-            frame_ms=args.frame_ms), args=args, push=True)
+            frame_ms=args.frame_ms), args=args, push=not args.no_push)
     raise AssertionError(f"unreachable command {args.cmd!r}")
 
 

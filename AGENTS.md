@@ -11,6 +11,15 @@ Never `show` without previewing and actually looking at the image first.
 You cannot see the device; the preview is the only way you know what you
 made.
 
+The one-shot verbs push as soon as you run them. Add `--no-push` to get
+the same preview file without touching the device:
+
+    muntin text "back in 5" --no-push
+    muntin image photo.jpg --no-push     # then look, then drop the flag
+
+Worth it for `image` especially -- fitting to 64x32 is where thin detail
+disappears.
+
 ## Constraints
 
 | | |
