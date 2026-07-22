@@ -236,11 +236,14 @@ class Sprite(Node):
             try:
                 img = Image.open(path)
                 img.load()
-            except OSError as e:
+            except Exception as e:
                 # Covers every way Image.open()/load() can fail on a path
-                # that exists but isn't a usable image: an unidentifiable
-                # or corrupt/truncated file, a directory, or a permission
-                # error -- all surface as OSError (or a subclass of it).
+                # that exists but isn't a usable image: unidentifiable or
+                # corrupt/truncated files (OSError subclasses), decompression
+                # bombs (PIL.Image.DecompressionBombError, not an OSError),
+                # memory issues, and permission errors. The try block
+                # contains only pure PIL operations with no llmbyt logic,
+                # so a broad catch is safe and future-proof.
                 raise SceneError(
                     f"{path} exists but is not a readable image ({e}). "
                     f"Sprite(...) needs a valid image file (PNG, JPEG, "

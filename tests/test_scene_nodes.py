@@ -177,6 +177,30 @@ def test_sprite_rejects_an_unknown_fit():
         sc.Sprite(Image.new("RGB", (4, 4)), fit="stretch")
 
 
+def test_sprite_on_a_decompression_bomb_raises_a_scene_error_not_a_traceback(tmp_path):
+    """PIL.Image.DecompressionBombError is not an OSError. It should still be
+    caught and wrapped in SceneError, not escape as a raw traceback."""
+    # Create a valid PNG and temporarily lower Image.MAX_IMAGE_PIXELS to trigger
+    # the decompression bomb check.
+    p = tmp_path / "bomb.png"
+    Image.new("RGB", (100, 100), color=cv.RED).save(str(p))
+
+    original_max = Image.MAX_IMAGE_PIXELS
+    try:
+        # Set limit to 100 pixels; 100x100 image = 10,000 pixels > limit
+        Image.MAX_IMAGE_PIXELS = 100
+        with pytest.raises(sc.SceneError) as exc_info:
+            sc.Sprite(str(p))
+        msg = str(exc_info.value)
+        # The error message should name the problematic path
+        assert str(p) in msg
+        # Should provide an actionable fix (pointing to PIL.Image or recommending
+        # a different file/passing an Image object)
+        assert "PIL.Image" in msg or "pass a" in msg or "image" in msg.lower()
+    finally:
+        Image.MAX_IMAGE_PIXELS = original_max
+
+
 # --- Plot ------------------------------------------------------------
 
 def test_plot_measures_one_column_per_value():
