@@ -1,9 +1,9 @@
 # Working at 64x32
 
 The display is 64 pixels wide and 32 tall. That is about 16 characters per
-line in the default font, and five lines. Everything below follows from
-how small that is and from the fact that it is an LED panel seen from
-across a room, not a screen seen from a foot away.
+line in the default font. Everything below follows from how small that is
+and from the fact that it is an LED panel seen from across a room, not a
+screen seen from a foot away.
 
 ## The loop
 
@@ -23,10 +23,13 @@ text are obvious at a glance.
 
 **Characters per line:**
 
-| Font | Cell | Chars/line | Lines |
-|---|---|---|---|
-| `tom-thumb` (default) | 4x6 | 16 | 5 |
-| `spleen-5x8` | 5x8 | 12 | 4 |
+| Font | Cell | Chars/line | Lines (practical) | Lines (max, gap=0) |
+|---|---|---|---|---|
+| `tom-thumb` (default) | 4x6 | 16 | 4 | 5 |
+| `spleen-5x8` | 5x8 | 12 | 3 | 4 |
+
+"Practical" = 2px gap between lines, 1px margin at top and bottom (30px available).
+"Max" = zero gap, flush to edges (32px available).
 
 Use `spleen-5x8` for anything read at a glance -- a time, a temperature, a
 single number. Use `tom-thumb` when you need the density.

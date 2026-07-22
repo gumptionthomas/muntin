@@ -23,7 +23,7 @@ def test_example_renders_to_valid_frames(path):
 @pytest.mark.parametrize("path", EXAMPLES, ids=lambda p: p.stem)
 def test_example_draws_something_visible(path):
     first = runner.frames_from(path)[0]
-    assert any(p != cv.BLACK for p in first.convert("RGB").getdata()), (
+    assert first.convert("RGB").getbbox() is not None, (
         f"{path.name} renders an entirely black first frame")
 
 
