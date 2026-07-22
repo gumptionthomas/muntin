@@ -161,6 +161,26 @@ def render():
         runner.frames_from(p)
 
 
+def test_a_set_of_non_images_names_set_and_the_three_accepted_forms(tmp_path):
+    p = display(tmp_path, "def render():\n    return {'a', 'b'}\n")
+    with pytest.raises(runner.DisplayError) as e:
+        runner.frames_from(p)
+    msg = str(e.value)
+    assert "set" in msg and "Scene" in msg and "Image" in msg
+    # Must not be misdispatched into the per-item iterable message.
+    assert "position 0" not in msg
+
+
+def test_a_frozenset_of_non_images_names_frozenset_and_the_three_accepted_forms(tmp_path):
+    p = display(tmp_path, "def render():\n    return frozenset(['a', 'b'])\n")
+    with pytest.raises(runner.DisplayError) as e:
+        runner.frames_from(p)
+    msg = str(e.value)
+    assert "frozenset" in msg and "Scene" in msg and "Image" in msg
+    # Must not be misdispatched into the per-item iterable message.
+    assert "position 0" not in msg
+
+
 def test_a_class_defined_in_a_display_module_can_be_pickled(tmp_path):
     p = display(tmp_path, """
 import pickle

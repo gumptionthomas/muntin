@@ -86,13 +86,16 @@ def normalize(value, frame_ms=_encode.FRAME_MS_DEFAULT):
     # any other wrong return type, instead of a misleading per-item
     # error that names the type of the first key and never says "dict".
     #
-    # A `set` was considered too (iteration order is meaningless for
-    # animation frames), but PIL.Image is unhashable: a set literally
-    # containing frame Images can't be constructed, so Python itself
-    # raises a clear TypeError at the user's return statement before
-    # normalize() ever runs. There's no misleading-message case to fix
-    # there, so it's left alone.
-    not_a_sequence = (str, bytes, collections.abc.Mapping)
+    # A set or frozenset must be rejected because animation frames are
+    # inherently ordered, and an unordered container cannot represent a
+    # valid frame sequence. This also prevents the same bug as above:
+    # if a user returns set(['a', 'b']), the error would incorrectly
+    # name 'str' (the first element's type) instead of 'set'. While
+    # PIL.Image is unhashable (so a set of actual Images cannot be
+    # constructed), that's not the only reason for rejection -- the
+    # ordering requirement applies to any set, even if it contained
+    # ordered content.
+    not_a_sequence = (str, bytes, collections.abc.Mapping, set, frozenset)
     if isinstance(value, Image.Image):
         frames = [value]
     elif hasattr(value, "__iter__") and not isinstance(value, not_a_sequence):
