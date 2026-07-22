@@ -56,3 +56,28 @@ def test_every_command_in_the_skill_parses(line):
             f"Either the flag was removed from cli.build_parser() or the "
             f"skill has a typo -- fix whichever is wrong, but they must "
             f"agree.")
+
+
+# The skill is installed globally (~/.claude/skills/muntin -> this repo's
+# skills/muntin/) and fires in any session, in any directory. Every file
+# the skill's prose points at -- CRAFT.md, celebrate.py -- must resolve
+# from inside skills/muntin/ itself, or the craft guidance the skill
+# exists to carry is dead the moment the agent is not sitting in this
+# repo. Bare relative paths like "CRAFT.md" resolve to nothing outside
+# the repo root; only files that actually live in (or are symlinked into)
+# skills/muntin/ survive the move.
+REFERENCED_FILES = ("CRAFT.md", "celebrate.py")
+
+
+@pytest.mark.parametrize("name", REFERENCED_FILES)
+def test_every_file_referenced_by_the_skill_resolves(name):
+    assert name in SKILL.read_text(), (
+        f"{name} is no longer mentioned in {SKILL} -- update "
+        f"REFERENCED_FILES in this test if that's intentional.")
+    target = SKILL.parent / name
+    assert target.exists(), (
+        f"SKILL.md references {name}, but {target} does not exist. "
+        f"The skill is installed globally and runs from its own "
+        f"directory -- add a symlink at skills/muntin/{name} pointing at "
+        f"the real file, so the reference resolves wherever the skill "
+        f"is invoked from.")

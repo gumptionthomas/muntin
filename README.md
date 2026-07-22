@@ -48,8 +48,11 @@ control.
 you invoke on its behalf.
 
 **Claude Code:** symlink the bundled skill, which carries the trigger and
-the craft guidance together. From the repo root:
+the craft guidance together. Clone the repo (a `uv tool install` alone
+does not give you the skill directory), then from its root:
 
+    git clone https://github.com/gumptionthomas/muntin
+    cd muntin
     mkdir -p ~/.claude/skills
     ln -sfn "$PWD/skills/muntin" ~/.claude/skills/muntin
 

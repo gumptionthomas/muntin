@@ -52,14 +52,15 @@ also return a `PIL.Image` for one hand-drawn frame, or a list of them for
 an animation - there is no mode switch, returning something lower-level
 is how you take more control.
 
-`examples/celebrate.py` is the shape of a display made for a moment
-rather than for information: motion behind a short bright word. Read it
-before you write your own. The other examples in `examples/` are
-informational by design and will pull you toward status if you copy them.
+`celebrate.py` in this skill's directory is the shape of a display made
+for a moment rather than for information: motion behind a short bright
+word. Read it before you write your own. The other examples in
+`examples/` are informational by design and will pull you toward status
+if you copy them.
 
-**Read CRAFT.md before designing anything.** It covers legibility,
-colour and animation at this size - the difference between a display that
-is valid and one that can be read across a room.
+**Read CRAFT.md in this skill's directory before designing anything.** It
+covers legibility, colour and animation at this size - the difference
+between a display that is valid and one that can be read across a room.
 
 ## Restraint
 
