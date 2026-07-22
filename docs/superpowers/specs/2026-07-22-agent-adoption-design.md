@@ -56,6 +56,7 @@ The two coexist because they occupy different roles, and this design must not bl
 2. A symlink from `~/.claude/skills/muntin/` during the proving period, so the trigger
    text can be iterated without reinstalling.
 3. A README section documenting the `~/.claude/CLAUDE.md` one-liner fallback.
+4. `examples/celebrate.py` — the genre the skill is asking for, specified below.
 
 Packaging as a plugin waits until the trigger is shown to fire. There is no point
 packaging something that does not work.
@@ -94,9 +95,11 @@ preview is its only evidence.
 its site and is not restated elsewhere; the same applies here. The skill links, CRAFT.md
 teaches.
 
-**One inline worked example.** Small — a Column with a bright headline over a dim
-subtitle — enough to convey the shape of a display without opening four files first.
-`examples/` carries the rest.
+**One inline worked example, plus a pointer to the genre.** Inline: a Column with a
+bright headline over a dim subtitle, small enough to convey the shape of a display
+without opening four files first. Then a pointer to `examples/celebrate.py` for what a
+display made *for a moment* looks like — the inline snippet teaches syntax, celebrate.py
+teaches intent, and the two are doing different jobs.
 
 **Guardrails.** Do not announce it in chat beforehand. Do not push what you have not
 looked at. Do not use it for status; familiar owns the glass for ambient things. A few
@@ -127,11 +130,63 @@ makes any good. The symlink exists so this period is cheap to iterate through.
 Failing 1 means the description needs work. Failing 2 or 3 means the body does. Failing 4
 in either direction is a wording problem, not a mechanism problem.
 
-## Optional, deferred
+## `examples/celebrate.py`
 
-- **A fifth example built for delight.** All four current examples are informational —
-  clock, message, sparkline, bounce. None is celebratory, so the skill has nothing honest
-  to point at for the thing it is actually asking for. A `celebrate.py` would be covered
-  by the existing example tests. Deferred pending the author's call.
+Required, not optional. All four current examples are informational — clock, message,
+sparkline, bounce. None is celebratory, so without this the skill would be asking for
+delight while pointing at a clock, leaving the agent to invent the genre unaided.
+
+**Confetti falling over a headline.** A `Stack` of a short bright word over a field of
+particles. Motion is the point: a still frame reads as information, and things falling
+read as *something just happened*. At 64×32 there is no room for nuance, so the motion
+carries the feeling that detail cannot.
+
+**It varies between runs** — the message and palette are drawn from small curated sets.
+This demonstrates composing a display for a moment rather than copying a template, which
+is the behaviour the skill is trying to produce.
+
+### Where the variation lives
+
+This is the part that would otherwise look like a violation of the purity invariant, so
+it is stated plainly: **variation happens at scene-construction time, never at draw
+time.** `render()` picks a seed, a message and a palette once, then builds a scene whose
+`draw()` closes over those as constants. Every frame remains a pure function of
+`(box, t)`; each particle's position is closed-form, `y = (i * 7 + t * 3) % 40`, with no
+state carried between frames and no mutation of `self`.
+
+Two constraints follow from the existing test suite:
+
+- `test_example_draws_something_visible` renders the first frame and asserts it is not
+  black. Every combination the randomiser can produce must therefore draw something on
+  frame 0 — the headline is always drawn, and no random choice may move content
+  off-screen. A varying example that can flake is worse than a fixed one.
+- Examples are collected by glob, so this file is covered by the existing example tests
+  the moment it lands. No golden pins example pixels — goldens cover font sheets, the
+  preview grid, and scene-layout primitives — which is what makes a varying example
+  permissible at all.
+
+## Generated images
+
+Not part of this spec, recorded because it came up and the answer is non-obvious.
+
+Generated rasters work at 64×32 only within a narrow band. Evidence from this project's
+own testing: a generated sunset survived beautifully — large shapes, strong gradient,
+high contrast — while its thin water glints vanished without a trace. **Silhouette and
+colour survive; anything thin does not.** A prompt for this medium must ask for a bold
+centred subject, two to four colours, no text and no fine lines.
+
+Two reasons it is not the default for celebration. It produces a single still frame,
+giving up the motion that makes something read as an event. And it depends on an
+image-generation tool the agent may not have, so the skill cannot assume one.
+
+Worth stating for whoever picks this up later: **muntin is already generative.** The agent
+writes code that draws, which is generation native to the medium — nothing is downsampled
+away, and it can respond to the actual moment. A generated image is a picture of
+celebration; a drawn display can say `247 GREEN` with confetti falling on it, which is a
+picture of *this* celebration. If the two are ever combined, the shape is a generated
+backdrop with drawn motion and text over it in a `Stack`.
+
+## Deferred
+
 - **Plugin packaging** and any `muntin skill --install` convenience — after the proving
   period.
