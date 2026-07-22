@@ -10,8 +10,13 @@ box is (x, y, w, h) in absolute canvas coordinates. draw() must be a pure
 function of (box, t) -- no state between frames. That is what makes golden
 tests meaningful and animation restartable from any frame.
 """
+import pathlib
+
+from PIL import Image
+
+from . import encode as _encode
 from . import font as _font
-from .canvas import WHITE
+from .canvas import GREEN, H, W, Canvas, WHITE
 from .errors import LlmbytError
 
 ALIGNMENTS = ("start", "center", "end")
@@ -141,3 +146,158 @@ class Stack(Node):
     def draw(self, canvas, box, t):
         for child in self.children:
             child.draw(canvas, box, t)
+
+
+# --- animation, images, data ----------------------------------------
+
+AXES = ("x", "y")
+FITS = ("none", "contain", "cover")
+
+
+class SceneOverflowError(SceneError):
+    pass
+
+
+class Marquee(Node):
+    """A viewport that scrolls an oversized child past the display.
+
+    measure() reports the clamped viewport size, not the child's size --
+    that is what makes a Marquee root exempt from the overflow check.
+    """
+
+    def __init__(self, child, axis="y", hold=14, speed=1):
+        if axis not in AXES:
+            raise SceneError(
+                f"axis={axis!r} is not valid. Use one of: "
+                f"{', '.join(AXES)} ('x' scrolls horizontally, 'y' "
+                f"scrolls vertically)."
+            )
+        if speed < 1:
+            raise SceneError(
+                f"speed={speed!r} is not valid. speed must be >= 1 -- it "
+                f"is the pixels advanced per frame, and 0 or negative "
+                f"would mean the marquee never reaches the far edge. "
+                f"Pass an integer speed of 1 or greater."
+            )
+        self.child = child
+        self.axis = axis
+        self.hold = max(0, hold)
+        self.speed = speed
+
+    def _travel(self):
+        cw, ch = self.child.measure()
+        return max(0, (cw - W) if self.axis == "x" else (ch - H))
+
+    def measure(self):
+        cw, ch = self.child.measure()
+        return (min(cw, W), min(ch, H))
+
+    def frame_count(self):
+        travel = self._travel()
+        if not travel:
+            return max(1, self.hold)
+        return max(1, self.hold) + -(-travel // self.speed)
+
+    def draw(self, canvas, box, t):
+        x, y, _, _ = box
+        moved = max(0, t - self.hold) * self.speed
+        off = min(moved, self._travel())
+        cw, ch = self.child.measure()
+        if self.axis == "x":
+            self.child.draw(canvas, (x - off, y, cw, ch), t)
+        else:
+            self.child.draw(canvas, (x, y - off, cw, ch), t)
+
+
+class Sprite(Node):
+    """A bitmap. fit=none|contain|cover; never upscales past the display."""
+
+    def __init__(self, image_or_path, fit="none"):
+        if fit not in FITS:
+            raise SceneError(
+                f"fit={fit!r} is not valid. Use one of: {', '.join(FITS)}."
+            )
+        if isinstance(image_or_path, (str, pathlib.Path)):
+            path = pathlib.Path(image_or_path)
+            if not path.exists():
+                raise SceneError(
+                    f"No such image: {path}. Sprite(...) needs a path to "
+                    f"an existing image file, or a PIL.Image passed in "
+                    f"directly. Check the path, or pass an Image object."
+                )
+            img = Image.open(path)
+        else:
+            img = image_or_path
+        self.img = _fit(img.convert("RGB"), fit)
+
+    def measure(self):
+        return (self.img.width, self.img.height)
+
+    def draw(self, canvas, box, t):
+        canvas.sprite(self.img, (box[0], box[1]))
+
+
+def _fit(img, mode):
+    if mode == "none" or (img.width <= W and img.height <= H
+                          and mode == "contain"):
+        return img
+    if mode == "contain":
+        scale = min(W / img.width, H / img.height)
+        size = (max(1, round(img.width * scale)),
+                max(1, round(img.height * scale)))
+        return img.resize(size, Image.LANCZOS)
+    # cover: fill the display, centre-crop the overflow
+    scale = max(W / img.width, H / img.height)
+    big = img.resize((max(W, round(img.width * scale)),
+                      max(H, round(img.height * scale))), Image.LANCZOS)
+    left, top = (big.width - W) // 2, (big.height - H) // 2
+    return big.crop((left, top, left + W, top + H))
+
+
+class Plot(Node):
+    """A sparkline: one column per value, min at the bottom, max at the top."""
+
+    DEFAULT_H = 8
+
+    def __init__(self, values, color=GREEN):
+        self.values = [float(v) for v in values]
+        if not self.values:
+            raise SceneError(
+                "Plot has no values. A sparkline needs at least one "
+                "point to measure or draw -- pass a non-empty sequence "
+                "of numbers."
+            )
+        self.color = color
+
+    def measure(self):
+        return (len(self.values), self.DEFAULT_H)
+
+    def draw(self, canvas, box, t):
+        x, y, bw, bh = box
+        lo, hi = min(self.values), max(self.values)
+        span = (hi - lo) or 1.0
+        rows = max(1, bh - 1)
+        pts = [(x + i, y + rows - round((v - lo) / span * rows))
+               for i, v in enumerate(self.values)]
+        if len(pts) == 1:
+            canvas.pixel(pts[0], self.color)
+            return
+        for a, b in zip(pts, pts[1:]):
+            canvas.line(a, b, self.color)
+
+
+def render_scene(node, frame_ms=_encode.FRAME_MS_DEFAULT):
+    """Render a scene tree to a list of 64x32 frames."""
+    w, h = node.measure()
+    if w > W or h > H:
+        raise SceneOverflowError(
+            f"Scene measures {w}x{h}, larger than the {W}x{H} display. "
+            f"Shorten the content, or wrap it in Marquee(...) to scroll it."
+        )
+    n = min(max(1, node.frame_count()), _encode.max_frames(frame_ms))
+    frames = []
+    for t in range(n):
+        c = Canvas()
+        node.draw(c, (0, 0, W, H), t)
+        frames.append(c.snapshot())
+    return frames
