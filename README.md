@@ -48,7 +48,7 @@ control.
 you invoke on its behalf.
 
 **Claude Code:** symlink the bundled skill, which carries the trigger and
-the craft guidance together:
+the craft guidance together. From the repo root:
 
     mkdir -p ~/.claude/skills
     ln -sfn "$PWD/skills/muntin" ~/.claude/skills/muntin
