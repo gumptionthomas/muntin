@@ -30,12 +30,13 @@ def test_the_budget_reports_the_count_the_scene_asked_for():
     child = sc.Column([sc.Text("x") for _ in range(400)])   # 2400px tall
     node = sc.Marquee(child, hold=1)
     frames, budget = sc.render_scene(node, frame_ms=100)
-    assert node.frame_count() == 2369
-    assert budget.requested == 2369
+    # hold(1) + travel(2400 - 32) + hold(1) = 2370
+    assert node.frame_count() == 2370
+    assert budget.requested == 2370
     assert budget.kept == 145 == len(frames)
-    assert budget.dropped == 2224
+    assert budget.dropped == 2225
     assert budget.fits is False
-    assert "2224" in budget.message()
+    assert "2225" in budget.message()
 
 
 def test_an_over_budget_scene_never_renders_the_frames_it_would_drop():

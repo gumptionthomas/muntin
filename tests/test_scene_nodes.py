@@ -48,10 +48,41 @@ def test_an_x_marquee_over_too_tall_content_is_a_loud_overflow():
     assert "60" in str(e.value)
 
 
-def test_marquee_frame_count_is_hold_plus_travel():
+def test_marquee_frame_count_holds_at_both_ends_of_the_travel():
     child = sc.Column([sc.Text("x") for _ in range(10)])   # 60px tall
     m = sc.Marquee(child, axis="y", hold=5, speed=1)
-    assert m.frame_count() == 5 + (60 - cv.H)
+    # hold at the near end, travel, then hold again at the far end -- so
+    # the position where the child's last row is visible is not gone in a
+    # single frame when the animation loops.
+    assert m.frame_count() == 5 + (60 - cv.H) + 5
+
+
+def test_marquee_rests_at_full_travel_before_the_loop_repeats():
+    """Full travel is the only position where the child's far edge is
+    visible -- for a wrapped message, the last line. frame_count() used to
+    end the animation on the frame that arrived there, so that line showed
+    for one frame (100ms at the default rate) before the loop snapped back
+    to the top, and the end of every scroll was effectively unreadable.
+
+    The marquee must now linger there. `hold` frames are appended after
+    arrival, so the resting run is hold + 1: the arriving frame plus the
+    held ones."""
+    child = sc.Column([sc.Text("x") for _ in range(10)])   # 60px tall
+    hold = 3
+    m = sc.Marquee(child, axis="y", hold=hold, speed=1)
+
+    def frame(t):
+        c = cv.Canvas()
+        m.draw(c, (0, 0, cv.W, cv.H), t)
+        return c.img.tobytes()
+
+    last = frame(m.frame_count() - 1)
+    resting = 0
+    for t in range(m.frame_count() - 1, -1, -1):
+        if frame(t) != last:
+            break
+        resting += 1
+    assert resting == hold + 1
 
 
 def test_marquee_that_fits_does_not_scroll():

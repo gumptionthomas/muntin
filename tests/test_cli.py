@@ -354,6 +354,29 @@ def test_init_with_stdin_closed_entirely_fails_cleanly(tmp_path, monkeypatch,
     assert "MUNTIN_DEVICE_ID" in capsys.readouterr().err
 
 
+def test_a_message_that_only_just_overflows_is_tightened_to_fit(tmp_path):
+    """Five wrapped lines measure 34px with a 1px leading -- 2px over the
+    display. A Marquee can only express 2px of travel as a crawl that
+    snaps back on loop, which reads as a glitch rather than a scroll.
+    Closing the leading fits the whole message in 30px, so it is simply
+    readable, all at once, with no motion at all. The 4x6 font carries its
+    own vertical spacing, so nothing collides."""
+    from muntin import canvas as cv
+    from muntin import scene as sc
+    node = cli._message("this one is long enough that it has to scroll "
+                        "across the display")
+    assert not isinstance(node, sc.Marquee)
+    assert node.measure()[1] <= cv.H
+
+
+def test_a_message_too_long_even_when_tightened_still_scrolls(tmp_path):
+    """The tightening must not turn into a silent way to drop content --
+    anything that still overflows at gap=0 has to scroll as before."""
+    from muntin import scene as sc
+    node = cli._message(" ".join(["word"] * 60))
+    assert isinstance(node, sc.Marquee)
+
+
 def test_scale_option_changes_the_preview_size(tmp_path):
     from PIL import Image
     out = tmp_path / "o.png"

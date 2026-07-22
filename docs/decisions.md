@@ -49,6 +49,12 @@ silently cropping content. An `axis="y"` marquee must still fit within 64px of w
 step. `hold` is the count of static frames, so zero of them means motion starts
 immediately. This differs from an earlier, accidentally-correct version.
 
+**`hold` rests at *both* ends, so `frame_count()` is `hold + travel + hold`.** Arriving at
+full travel is the only moment the child's far edge is visible — for a wrapped message,
+its last line. Ending the animation on that frame showed it for a single frame before the
+loop snapped back to the top, which made the end of every scroll unreadable. `draw()`
+already clamps the offset to `travel`, so the appended frames need no special case.
+
 **`Stack` hands each child the Stack's own box,** not a box sized to the child. Sizing to
 the child gives an alignment-aware container zero slack, silently disabling its
 `align`/`justify`.

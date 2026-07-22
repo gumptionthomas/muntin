@@ -135,7 +135,23 @@ def _message(text):
             cur = cand
     if cur:
         lines.append(cur)
-    column = sc.Column([sc.Text(ln) for ln in lines], gap=1, align="center")
+    def stack(gap):
+        return sc.Column([sc.Text(ln) for ln in lines], gap=gap,
+                         align="center")
+
+    column = stack(1)
+    if column.measure()[1] > cv.H:
+        # A single pixel of leading is what puts five wrapped lines at
+        # 34px -- 2px over the display. A Marquee can only express 2px of
+        # travel as a crawl that snaps back when the loop repeats, which
+        # reads as a glitch, not a scroll. Closing the leading fits the
+        # same text in 30px: readable all at once, no motion needed. The
+        # 4x6 font carries its own vertical spacing, so the lines do not
+        # collide. Only worth it when it actually decides the question --
+        # anything still overflowing at gap=0 scrolls as before.
+        tight = stack(0)
+        if tight.measure()[1] <= cv.H:
+            column = tight
     if column.measure()[1] > cv.H:
         return sc.Marquee(column, axis="y", hold=14)
     return sc.Column([column], justify="center", align="center")

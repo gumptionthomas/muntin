@@ -238,7 +238,15 @@ class Marquee(Node):
         travel = self._travel()
         if not travel:
             return max(1, self.hold)
-        return self.hold + -(-travel // self.speed)
+        # `+ self.hold` twice: rest at the far end as well as the near one.
+        # Arriving at full travel is the only moment the child's far edge
+        # is visible -- for a wrapped message, its last line. Ending the
+        # animation on that frame showed it for a single frame before the
+        # loop snapped back to the top, which made the end of every scroll
+        # unreadable and the whole thing read as a twitch. draw() already
+        # clamps `off` to travel, so the appended frames need no special
+        # case: they simply keep painting the resting position.
+        return self.hold + -(-travel // self.speed) + self.hold
 
     def draw(self, canvas, box, t):
         x, y, _, _ = box
