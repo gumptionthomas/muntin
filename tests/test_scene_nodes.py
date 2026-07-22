@@ -152,6 +152,26 @@ def test_missing_sprite_path_names_the_file():
         sc.Sprite("nope.png")
 
 
+def test_sprite_on_a_non_image_file_names_the_path_and_the_fix(tmp_path):
+    p = tmp_path / "notimage.png"
+    p.write_text("not an image")
+    with pytest.raises(sc.SceneError) as exc_info:
+        sc.Sprite(str(p))
+    msg = str(exc_info.value)
+    assert str(p) in msg
+    assert "not a" in msg or "not readable" in msg
+    # actionable fix: what the caller should do about it
+    assert "PIL.Image" in msg or "pass a" in msg
+
+
+def test_sprite_on_a_directory_raises_a_scene_error_not_a_traceback(tmp_path):
+    d = tmp_path / "somedir"
+    d.mkdir()
+    with pytest.raises(sc.SceneError) as exc_info:
+        sc.Sprite(str(d))
+    assert str(d) in str(exc_info.value)
+
+
 def test_sprite_rejects_an_unknown_fit():
     with pytest.raises(sc.SceneError, match="stretch"):
         sc.Sprite(Image.new("RGB", (4, 4)), fit="stretch")

@@ -84,6 +84,71 @@ def test_image_fits_a_real_picture(tmp_path, no_network):
     assert len(no_network.calls) == 1
 
 
+def test_image_on_a_non_image_file_is_a_clean_error(tmp_path, no_network,
+                                                     capsys):
+    bad = tmp_path / "notimage.png"
+    bad.write_text("not an image")
+    assert cli.main(["image", str(bad), "-o", str(tmp_path / "o")]) == 1
+    err = capsys.readouterr().err
+    assert str(bad) in err
+    assert "Traceback" not in err
+    assert no_network.calls == []
+
+
+def test_text_with_a_single_overlong_word_still_succeeds(tmp_path, no_network):
+    word = "a" * 28   # longer than one line (16 chars at char_w=4, W=64)
+    assert cli.main(["text", word, "-o", str(tmp_path / "o")]) == 0
+
+
+def test_text_with_a_single_overlong_word_shows_every_character(tmp_path):
+    from llmbyt import font as _font
+    word = "a" * 28
+    # Walk the produced scene tree and collect every Text node's string,
+    # in the order they'd be displayed, to verify no character is lost.
+    def collect_text(node):
+        out = []
+        if hasattr(node, "s"):
+            out.append(node.s)
+        for attr in ("children", "child"):
+            child = getattr(node, attr, None)
+            if child is None:
+                continue
+            if isinstance(child, list):
+                for c in child:
+                    out.extend(collect_text(c))
+            else:
+                out.extend(collect_text(child))
+        return out
+
+    scene = cli._message(word)
+    assembled = "".join(collect_text(scene))
+    assert assembled == word
+    f = _font.load()
+    per_line = 64 // f.char_w
+    # every produced Text node must fit on its own line
+    def collect_widths(node):
+        widths = []
+        if hasattr(node, "s"):
+            widths.append(len(node.s))
+        for attr in ("children", "child"):
+            child = getattr(node, attr, None)
+            if child is None:
+                continue
+            if isinstance(child, list):
+                for c in child:
+                    widths.extend(collect_widths(c))
+            else:
+                widths.extend(collect_widths(child))
+        return widths
+    assert all(w <= per_line for w in collect_widths(scene))
+
+
+def test_text_with_a_word_far_longer_than_the_display_still_succeeds(
+        tmp_path, no_network):
+    word = "a" * 200
+    assert cli.main(["text", word, "-o", str(tmp_path / "o")]) == 0
+
+
 def test_a_display_error_prints_the_message_without_a_traceback(
         tmp_path, capsys):
     bad = display(tmp_path, "def render():\n    return 42\n")

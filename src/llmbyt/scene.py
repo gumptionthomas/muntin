@@ -233,7 +233,23 @@ class Sprite(Node):
                     f"an existing image file, or a PIL.Image passed in "
                     f"directly. Check the path, or pass an Image object."
                 )
-            img = Image.open(path)
+            try:
+                img = Image.open(path)
+                img.load()
+            except OSError as e:
+                # Covers every way Image.open()/load() can fail on a path
+                # that exists but isn't a usable image: an unidentifiable
+                # or corrupt/truncated file, a directory, or a permission
+                # error -- all surface as OSError (or a subclass of it).
+                raise SceneError(
+                    f"{path} exists but is not a readable image ({e}). "
+                    f"Sprite(...) needs a valid image file (PNG, JPEG, "
+                    f"GIF, etc) -- check that the path points at an "
+                    f"actual image and not a directory, and that the "
+                    f"file isn't corrupt, truncated, or permission-"
+                    f"restricted. Or pass a PIL.Image object directly "
+                    f"instead of a path."
+                ) from e
         else:
             img = image_or_path
         self.img = _fit(img.convert("RGB"), fit)

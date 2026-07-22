@@ -108,6 +108,16 @@ def _message(text):
     per_line = cv.W // f.char_w
     words, lines, cur = text.split(), [], ""
     for w in words:
+        # A word longer than a whole line can never join `cur` -- break it
+        # into line-sized chunks itself, the way a terminal wrapper would,
+        # so no produced line ever exceeds per_line and every character of
+        # the input is still displayed.
+        while len(w) > per_line:
+            if cur:
+                lines.append(cur)
+                cur = ""
+            lines.append(w[:per_line])
+            w = w[per_line:]
         cand = (cur + " " + w).strip()
         if len(cand) > per_line and cur:
             lines.append(cur)
