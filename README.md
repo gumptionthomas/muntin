@@ -61,6 +61,8 @@ that other apps already own.
 - [CRAFT.md](CRAFT.md) — working at 64x32: legibility, colour, animation
 - [AGENTS.md](AGENTS.md) — the short version, for agents
 - [`examples/`](examples/) — four displays, all covered by tests
+- [docs/decisions.md](docs/decisions.md) — what's deliberate and would otherwise look like
+  an oversight. Read before "fixing" something that seems odd.
 
 ## License
 
