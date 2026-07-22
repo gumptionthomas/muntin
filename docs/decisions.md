@@ -15,12 +15,22 @@ There is no mode flag and no second entry point, because adding one would mean c
 level of control before writing any code. Returning something lower-level is how you take
 more control.
 
-**Every push is an ephemeral interrupt.** `background: false` against a fixed
-`installationID`, so a frame appears immediately and the device then resumes its own app
-rotation. `muntin` never creates, deletes, or reorders anyone else's installations. That
-single constraint removes an entire category of device-state management and makes the
-tool safe to point at a display other apps already own. Rotation management is not a
+**Every push is an ephemeral interrupt.** `background: false` and **no `installationID`
+at all**. `muntin` never creates, deletes, or reorders installations — including its own.
+That single constraint removes an entire category of device-state management and makes
+the tool safe to point at a display other apps already own. Rotation management is not a
 missing feature — it is out of scope on purpose.
+
+The two fields do different jobs, and conflating them was a real bug: `background`
+controls *when* a frame appears, and the absence of an `installationID` is what stops it
+from **staying**. Tidbyt's own client documents the flag as "Give your installation an ID
+to keep it in the rotation" — supplying one is precisely what makes a push persist. This
+entry previously described a fixed `installationID` as part of what made a push ephemeral.
+It was the opposite: the pushed frame became a permanent app cycling on the device beside
+its owner's real ones, found only when someone walked away and came back to a display
+still showing a test card. `device.INSTALLATION_ID` is `""` and must stay `""`; the test
+named `test_push_is_always_an_ephemeral_interrupt` asserted only `background` and passed
+against the bug its name described.
 
 **The preview loop is the product, not a convenience.** The agent driving this tool
 cannot see the physical device, so a preview file is its only means of verification.

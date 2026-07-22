@@ -132,18 +132,27 @@ def test_push_targets_the_configured_device():
     assert p.calls[0][0] == device.PUSH_URL % "dev123"
 
 
-def test_push_sends_base64_webp_with_the_fixed_installation_id():
+def test_push_sends_the_webp_as_base64():
     p = Poster()
     device.push(b"webp-bytes", cfg(), poster=p)
     body = json.loads(p.calls[0][1])
     assert base64.b64decode(body["image"]) == b"webp-bytes"
-    assert body["installationID"] == device.INSTALLATION_ID
 
 
 def test_push_is_always_an_ephemeral_interrupt():
+    """This asserted only `background is False` and passed against a push
+    that was not ephemeral at all. Tidbyt's own client documents the other
+    half: --installation-id is "Give your installation an ID to keep it in
+    the rotation". muntin sent a fixed one, so every push wrote into a
+    permanent installation slot that the device then cycled like any other
+    app -- a stray `muntin` app was found running on a real device beside
+    its owner's own. background=False controls *when* a frame appears; the
+    absence of an installation ID is what stops it from staying."""
     p = Poster()
     device.push(b"w", cfg(), poster=p)
-    assert json.loads(p.calls[0][1])["background"] is False
+    body = json.loads(p.calls[0][1])
+    assert body["background"] is False
+    assert not body.get("installationID")
 
 
 def test_push_sends_a_bearer_token():

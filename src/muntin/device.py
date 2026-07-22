@@ -21,7 +21,16 @@ from dataclasses import dataclass
 from .errors import MuntinError
 
 PUSH_URL = "https://api.tidbyt.com/v0/devices/%s/push"
-INSTALLATION_ID = "muntin"
+# Empty, and it must stay empty. Tidbyt's own client documents the field as
+# "Give your installation an ID to keep it in the rotation" -- supplying one
+# is precisely what makes a push persist. muntin sent a fixed "muntin" here
+# on the theory that background=False alone made the push ephemeral and a
+# constant ID merely avoided accumulating a new installation per push. Half
+# of that was right: it never created more than one. But that one sat in the
+# device's rotation cycling its last frame forever, beside its owner's real
+# apps, which is the opposite of the ephemeral interrupt the README promises.
+# pixlet sends "" for its default one-time push; so do we.
+INSTALLATION_ID = ""
 CONFIG_PATH = pathlib.Path(
     os.environ.get("XDG_CONFIG_HOME", pathlib.Path.home() / ".config")
 ) / "muntin" / "config.toml"
