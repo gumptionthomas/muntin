@@ -115,13 +115,19 @@ write path, so the default invocation deleted an unrelated user file named `out`
 never assumed.** `preview.candidates` exists to make that derivation explicit and is
 tested against paths `write()` could not have produced.
 
+**`README.md`'s links to other repo files are absolute, not relative.** The README is the
+PyPI long description, and a relative link resolves against `pypi.org` there — so
+`[CRAFT.md](CRAFT.md)` 404s on the project page while looking correct on GitHub. New links
+to files in this repo must be full `https://github.com/gumptionthomas/muntin/...` URLs.
+(`[project.urls]` was absent for the same family of reason — no remote existed, and a
+fabricated `Homepage` is worse than an absent optional field. The remote now exists and the
+field is populated.)
+
 ## Known gaps and open follow-ups
 
-**No `[project.urls]` in `pyproject.toml`.** The repository has no remote yet, so any
-`Homepage` would be fabricated, and a 404 in published metadata is worse than an absent
-optional field. Add it — and make `README.md`'s links to `CRAFT.md` and `AGENTS.md`
-absolute, since relative links do not resolve on a PyPI project page — once the remote
-exists.
+**Not yet published to PyPI.** Until it is, the README's `uv tool install muntin` line
+describes an install that does not work. The name is unclaimed; the package builds and
+passes `twine check`.
 
 **Out of scope for v1, each deserving its own design:** an MCP server (the expected next
 piece, for harnesses without a shell), a live web preview, installation/rotation

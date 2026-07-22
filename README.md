@@ -62,11 +62,15 @@ that other apps already own.
 
 ## Design notes
 
-- [CRAFT.md](CRAFT.md) — working at 64x32: legibility, colour, animation
-- [AGENTS.md](AGENTS.md) — the short version, for agents
-- [`examples/`](examples/) — four displays, all covered by tests
-- [docs/decisions.md](docs/decisions.md) — what's deliberate and would otherwise look like
-  an oversight. Read before "fixing" something that seems odd.
+- [CRAFT.md](https://github.com/gumptionthomas/muntin/blob/main/CRAFT.md) — working at
+  64x32: legibility, colour, animation
+- [AGENTS.md](https://github.com/gumptionthomas/muntin/blob/main/AGENTS.md) — the short
+  version, for agents
+- [`examples/`](https://github.com/gumptionthomas/muntin/tree/main/examples) — four
+  displays, all covered by tests
+- [docs/decisions.md](https://github.com/gumptionthomas/muntin/blob/main/docs/decisions.md)
+  — what's deliberate and would otherwise look like an oversight. Read before "fixing"
+  something that seems odd.
 
 ## License
 

@@ -24,6 +24,11 @@ classifiers = [
 ]
 dependencies = ["pillow>=10"]
 
+[project.urls]
+Homepage = "https://github.com/gumptionthomas/muntin"
+Repository = "https://github.com/gumptionthomas/muntin"
+Issues = "https://github.com/gumptionthomas/muntin/issues"
+
 [project.scripts]
 muntin = "muntin.cli:main"
 
