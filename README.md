@@ -45,14 +45,22 @@ control.
 ## Giving an agent the display
 
 `muntin` is meant to be something an agent *chooses* to use, not something
-you invoke on its behalf. Add one line to your global agent config —
-`~/.claude/CLAUDE.md`, `AGENTS.md`, or your harness's equivalent:
+you invoke on its behalf.
+
+**Claude Code:** symlink the bundled skill, which carries the trigger and
+the craft guidance together:
+
+    mkdir -p ~/.claude/skills
+    ln -sfn "$PWD/skills/muntin" ~/.claude/skills/muntin
+
+**Any other harness:** add one line to your global agent config —
+`AGENTS.md`, or whatever your harness reads:
 
 > There is a Tidbyt on the desk. Run `muntin --help`. Use it when it would
 > be genuinely nice — a build finishing, something worth noticing, or just
 > because. You do not need to ask first.
 
-That grants standing permission without a command to remember.
+Either way it grants standing permission without a command to remember.
 
 ## What it does not do
 
