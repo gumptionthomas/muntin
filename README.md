@@ -45,14 +45,25 @@ control.
 ## Giving an agent the display
 
 `muntin` is meant to be something an agent *chooses* to use, not something
-you invoke on its behalf. Add one line to your global agent config —
-`~/.claude/CLAUDE.md`, `AGENTS.md`, or your harness's equivalent:
+you invoke on its behalf.
+
+**Claude Code:** symlink the bundled skill, which carries the trigger and
+the craft guidance together. Clone the repo (a `uv tool install` alone
+does not give you the skill directory), then from its root:
+
+    git clone https://github.com/gumptionthomas/muntin
+    cd muntin
+    mkdir -p ~/.claude/skills
+    ln -sfn "$PWD/skills/muntin" ~/.claude/skills/muntin
+
+**Any other harness:** add one line to your global agent config —
+`AGENTS.md`, or whatever your harness reads:
 
 > There is a Tidbyt on the desk. Run `muntin --help`. Use it when it would
 > be genuinely nice — a build finishing, something worth noticing, or just
 > because. You do not need to ask first.
 
-That grants standing permission without a command to remember.
+Either way it grants standing permission without a command to remember.
 
 ## What it does not do
 
@@ -67,7 +78,7 @@ that other apps already own.
   64x32: legibility, colour, animation
 - [AGENTS.md](https://github.com/gumptionthomas/muntin/blob/main/AGENTS.md) — the short
   version, for agents
-- [`examples/`](https://github.com/gumptionthomas/muntin/tree/main/examples) — four
+- [`examples/`](https://github.com/gumptionthomas/muntin/tree/main/examples) — five
   displays, all covered by tests
 - [docs/decisions.md](https://github.com/gumptionthomas/muntin/blob/main/docs/decisions.md)
   — what's deliberate and would otherwise look like an oversight. Read before "fixing"
